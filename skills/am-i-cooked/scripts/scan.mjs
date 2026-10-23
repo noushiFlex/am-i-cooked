@@ -211,9 +211,11 @@ async function vulnDetails(id) {
 
 // ---- helpers ----
 
+const stripV = (v) => v.replace(/^v/, ''); // Go versions carry a "v" prefix, advisories do not
+
 function compareVersions(a, b) {
-  const pa = a.split(/[.\-+]/);
-  const pb = b.split(/[.\-+]/);
+  const pa = stripV(a).split(/[.\-+]/);
+  const pb = stripV(b).split(/[.\-+]/);
   for (let i = 0; i < Math.max(pa.length, pb.length); i++) {
     const x = Number(pa[i] ?? 0);
     const y = Number(pb[i] ?? 0);
@@ -254,7 +256,7 @@ function upgradePlan(findings) {
     row.worstCvss = Math.max(row.worstCvss, f.cvss ?? 0);
     plan.set(key, row);
   }
-  const majorOf = (v) => v.split('.')[0];
+  const majorOf = (v) => stripV(v).split('.')[0];
   for (const row of plan.values()) row.majorJump = Boolean(row.target) && majorOf(row.target) !== majorOf(row.installed);
   return [...plan.values()].sort((a, b) => b.worstCvss - a.worstCvss);
 }

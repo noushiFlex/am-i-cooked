@@ -28,6 +28,10 @@ const sarif = JSON.parse(run(fixtures, '--sarif').stdout);
 assert.equal(sarif.version, '2.1.0');
 assert.ok(sarif.runs[0].results.length > 0 && sarif.runs[0].results[0].locations[0].physicalLocation.artifactLocation.uri, 'SARIF results carry a lockfile location');
 
+const goUpgrade = report.upgrades.find((u) => u.package === 'golang.org/x/crypto');
+assert.ok(goUpgrade.target, 'Go "v"-prefixed versions still resolve to a fix');
+assert.ok(goUpgrade.majorJump === false || goUpgrade.target.startsWith('0.'), 'Go v0 pseudo-version is not a false major jump');
+
 const empty = run(mkdtempSync(join(tmpdir(), 'aic-')));
 assert.equal(empty.status, 2, 'no lockfile must exit 2, never report safe');
 assert.match(empty.stdout, /UNKNOWN/);
