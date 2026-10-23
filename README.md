@@ -13,6 +13,8 @@
 
 </div>
 
+<p align="center"><img src="docs/demo.svg" alt="am-i-cooked printing a COOKED verdict and an upgrade plan" width="820" /></p>
+
 Ask your coding agent **"am i cooked?"**. It reads your lockfiles, checks the exact versions you run against live vulnerability data, and answers with a verdict. If you say yes, it upgrades the vulnerable packages on a separate branch, runs your tests after each one, and stops before pushing.
 
 ```text
