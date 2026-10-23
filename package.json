@@ -1,0 +1,13 @@
+{
+  "name": "am-i-cooked",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Agent skill that checks your lockfiles against live CVE data and fixes vulnerable dependencies safely.",
+  "type": "module",
+  "license": "MIT",
+  "engines": { "node": ">=18" },
+  "scripts": {
+    "scan": "node skills/am-i-cooked/scripts/scan.mjs .",
+    "test": "node tests/run.mjs"
+  }
+}

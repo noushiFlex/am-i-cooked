@@ -1,0 +1,50 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "am-i-cooked report",
+  "description": "Output of `scan.mjs --json`.",
+  "type": "object",
+  "required": ["verdict", "scannedAt", "lockfiles", "packagesScanned", "upgrades", "findings"],
+  "properties": {
+    "verdict": { "enum": ["safe", "a bit cooked", "cooked", "unknown"] },
+    "scannedAt": { "type": "string", "format": "date-time" },
+    "lockfiles": { "type": "array", "items": { "type": "string" } },
+    "packagesScanned": { "type": "integer", "minimum": 0 },
+    "upgrades": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["ecosystem", "package", "installed", "target", "fixes", "unfixed", "worstCvss", "majorJump"],
+        "properties": {
+          "ecosystem": { "enum": ["npm", "PyPI", "Pub"] },
+          "package": { "type": "string" },
+          "installed": { "type": "string" },
+          "target": { "type": ["string", "null"], "description": "Lowest version that clears every fixable finding. Null if no fix is known." },
+          "fixes": { "type": "integer", "description": "Findings cleared by the target." },
+          "unfixed": { "type": "integer", "description": "Findings with no known fix." },
+          "worstCvss": { "type": "number" },
+          "majorJump": { "type": "boolean" }
+        }
+      }
+    },
+    "findings": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "title", "ecosystem", "package", "installed", "fixedIn", "cvss", "kev", "likelyExploited", "lockfile", "source"],
+        "properties": {
+          "id": { "type": "string", "description": "CVE id when known, otherwise GHSA or OSV id." },
+          "title": { "type": "string" },
+          "ecosystem": { "enum": ["npm", "PyPI", "Pub"] },
+          "package": { "type": "string" },
+          "installed": { "type": "string" },
+          "fixedIn": { "type": ["string", "null"] },
+          "cvss": { "type": ["number", "null"] },
+          "kev": { "type": "boolean", "description": "Listed in the CISA Known Exploited Vulnerabilities catalog." },
+          "likelyExploited": { "type": "boolean", "description": "EPSS threshold reached or a public exploit exists." },
+          "lockfile": { "type": "string" },
+          "source": { "enum": ["cve.now", "osv.dev", "none"] }
+        }
+      }
+    }
+  }
+}

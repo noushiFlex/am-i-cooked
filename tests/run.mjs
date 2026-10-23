@@ -1,0 +1,27 @@
+// Integration test: scans the vulnerable lockfiles in tests/fixtures (needs network).
+import { spawnSync } from 'node:child_process';
+import { mkdtempSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import assert from 'node:assert/strict';
+
+const scan = new URL('../skills/am-i-cooked/scripts/scan.mjs', import.meta.url).pathname;
+const fixtures = new URL('./fixtures', import.meta.url).pathname;
+const run = (...args) => spawnSync('node', [scan, ...args], { encoding: 'utf8' });
+
+const vulnerable = run(fixtures, '--json');
+assert.equal(vulnerable.status, 1, 'vulnerable fixtures must exit 1');
+const report = JSON.parse(vulnerable.stdout);
+assert.equal(report.verdict, 'cooked');
+assert.equal(report.lockfiles.length, 6, 'all six lockfile formats are found');
+for (const name of ['lodash', 'axios', 'requests', 'urllib3', 'minimist', 'http']) {
+  assert.ok(report.findings.some((f) => f.package === name), `finding expected for ${name}`);
+}
+assert.ok(report.upgrades.every((u) => u.target === null || u.target !== u.installed), 'targets differ from installed');
+assert.ok(report.upgrades.find((u) => u.package === 'urllib3').majorJump, 'urllib3 1.x -> 2.x flagged as major');
+
+const empty = run(mkdtempSync(join(tmpdir(), 'aic-')));
+assert.equal(empty.status, 2, 'no lockfile must exit 2, never report safe');
+assert.match(empty.stdout, /UNKNOWN/);
+
+console.log('ok');

@@ -1,0 +1,7 @@
+[[package]]
+name = "urllib3"
+version = "1.25.0"
+
+[[package]]
+name = "idna"
+version = "3.7"

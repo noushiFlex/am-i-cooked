@@ -1,0 +1,8 @@
+lockfileVersion: '9.0'
+packages:
+  minimist@1.2.0:
+    resolution: {integrity: sha512-x}
+  '@babel/core@7.0.0':
+    resolution: {integrity: sha512-y}
+snapshots:
+  minimist@1.2.0: {}
