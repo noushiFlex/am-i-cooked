@@ -48,6 +48,20 @@ assert.equal(unpinned.status, 2, 'unpinned ranges must exit 2, never report safe
 assert.match(unpinned.stdout, /UNKNOWN/);
 assert.match(unpinned.stdout, /none pins an exact version/);
 
+// Cache + offline: a second scan from an isolated cache dir must give the same answer without network.
+const cacheDir = mkdtempSync(join(tmpdir(), 'aic-cache-'));
+const withCache = (...args) => spawnSync('node', [scan, ...args], { encoding: 'utf8', env: { ...process.env, AM_I_COOKED_CACHE: cacheDir } });
+const online = JSON.parse(withCache(fixtures, '--json').stdout);
+const cached = withCache(fixtures, '--json', '--offline');
+assert.equal(cached.status, 1, 'offline scan from a warm cache still finds vulnerabilities');
+assert.equal(JSON.parse(cached.stdout).findings.length, online.findings.length, 'offline findings match online findings');
+const cold = spawnSync('node', [scan, fixtures, '--offline'], { encoding: 'utf8', env: { ...process.env, AM_I_COOKED_CACHE: mkdtempSync(join(tmpdir(), 'aic-cold-')) } });
+assert.equal(cold.status, 2, 'offline with an empty cache must fail loudly, never say safe');
+assert.match(cold.stderr, /--offline: no cached answer/);
+const dead = spawnSync('node', [scan, fixtures], { encoding: 'utf8', env: { ...process.env, AM_I_COOKED_CACHE: mkdtempSync(join(tmpdir(), 'aic-dead-')), AM_I_COOKED_OSV_URL: 'http://127.0.0.1:9/v1' } });
+assert.equal(dead.status, 2, 'unreachable API must exit 2');
+assert.match(dead.stderr, /cannot reach 127\.0\.0\.1:9.*--offline/);
+
 const empty = run(mkdtempSync(join(tmpdir(), 'aic-')));
 assert.equal(empty.status, 2, 'no lockfile must exit 2, never report safe');
 assert.match(empty.stdout, /UNKNOWN/);

@@ -27,6 +27,8 @@ No key needed. Merges the CVE List, GitHub Advisory Database, OSV, NVD, ENISA EU
 
 Coverage by ecosystem: npm, pypi, go, maven, crates.io, packagist, rubygems, hex, nuget. It does not cover pub, so the scanner falls back to OSV.dev data for Dart/Flutter (severity then comes from the advisory label, with no KEV or exploit signal).
 
+Responses are cached on disk for 6 hours (`AM_I_COOKED_CACHE` overrides the folder). `--offline` reads the cache only; `--no-cache` bypasses it. Endpoints can be overridden with `AM_I_COOKED_OSV_URL` and `AM_I_COOKED_CVE_NOW_URL`, which the tests use to point at a mock server.
+
 Rate limits are not documented. The scanner sends at most 10 concurrent requests.
 
 ## Known blind spots

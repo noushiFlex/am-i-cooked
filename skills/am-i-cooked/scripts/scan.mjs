@@ -1,12 +1,18 @@
 #!/usr/bin/env node
 // am-i-cooked scanner: lockfiles -> OSV match -> cve.now enrichment -> verdict.
 // Usage: node scan.mjs [dir] [--json | --sarif | --markdown] [--fail-on=any|cooked|kev|none] [--ignore=ID,ID]
+//                       [--offline] [--no-cache]
 // Exit code 0 = pass, 1 = failed the --fail-on threshold (default: any finding), 2 = nothing checked or error.
-import { existsSync, readdirSync, readFileSync } from 'node:fs';
+import { createHash } from 'node:crypto';
+import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { homedir } from 'node:os';
 import { join, relative } from 'node:path';
 
-const OSV = 'https://api.osv.dev/v1';
-const CVE_NOW = 'https://cve.now/api/v1/entries';
+// Endpoints can be overridden (tests point them at a local mock server).
+const OSV = process.env.AM_I_COOKED_OSV_URL ?? 'https://api.osv.dev/v1';
+const CVE_NOW = process.env.AM_I_COOKED_CVE_NOW_URL ?? 'https://cve.now/api/v1/entries';
+const CACHE_DIR = process.env.AM_I_COOKED_CACHE ?? join(homedir(), '.cache', 'am-i-cooked');
+const CACHE_TTL_MS = 6 * 60 * 60 * 1000;
 const SKIP_DIRS = new Set(['node_modules', '.git', '.dart_tool', 'build', 'dist', '.venv', 'venv', 'target', 'vendor']);
 const TEXT_LIMIT = 10;
 const OSV_LABEL_TO_CVSS = { CRITICAL: 9.5, HIGH: 7.5, MODERATE: 5, MEDIUM: 5, LOW: 2 };
@@ -15,6 +21,8 @@ const args = process.argv.slice(2);
 const asJson = args.includes('--json');
 const asSarif = args.includes('--sarif');
 const asMarkdown = args.includes('--markdown');
+const offline = args.includes('--offline'); // answer from the local cache only, never touch the network
+const useCache = !args.includes('--no-cache');
 const failOn = args.find((a) => a.startsWith('--fail-on='))?.split('=')[1] ?? 'any';
 const root = args.find((a) => !a.startsWith('--')) ?? '.';
 if (!['any', 'cooked', 'kev', 'none'].includes(failOn)) {
@@ -158,10 +166,64 @@ function findLockfiles(dir, depth = 0) {
 
 // ---- network ----
 
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+function cachePath(url, init) {
+  const key = createHash('sha256').update(`${init?.method ?? 'GET'} ${url} ${init?.body ?? ''}`).digest('hex').slice(0, 32);
+  return join(CACHE_DIR, `${key}.json`);
+}
+
+function readCache(file) {
+  try {
+    return JSON.parse(readFileSync(file, 'utf8'));
+  } catch {
+    return null;
+  }
+}
+
+function writeCache(file, data) {
+  try {
+    mkdirSync(CACHE_DIR, { recursive: true });
+    writeFileSync(file, JSON.stringify({ at: Date.now(), data }));
+  } catch {
+    // a read-only cache dir must never break a scan
+  }
+}
+
+// GET/POST JSON with a disk cache (6h), retries on 429/5xx/network errors, and stale-cache fallback.
+// Returns null on 404. Throws an Error whose message says what to do.
 async function getJson(url, init) {
-  const res = await fetch(url, { ...init, signal: AbortSignal.timeout(20000) });
-  if (!res.ok) return null;
-  return res.json();
+  const file = cachePath(url, init);
+  const cached = useCache || offline ? readCache(file) : null;
+  const host = new URL(url).host;
+  if (cached && (offline || Date.now() - cached.at < CACHE_TTL_MS)) return cached.data;
+  if (offline) throw new Error(`--offline: no cached answer from ${host} for this scan. Run once online first.`);
+
+  let failure = '';
+  for (let attempt = 0; attempt < 3; attempt++) {
+    if (attempt) await sleep(500 * 2 ** attempt);
+    try {
+      const res = await fetch(url, { ...init, signal: AbortSignal.timeout(20000) });
+      if (res.status === 404) {
+        writeCache(file, null);
+        return null;
+      }
+      if (res.ok) {
+        const data = await res.json();
+        writeCache(file, data);
+        return data;
+      }
+      failure = `${host} answered HTTP ${res.status}`;
+      if (res.status !== 429 && res.status < 500) break; // other 4xx will not get better
+    } catch (err) {
+      failure = `cannot reach ${host} (${err.cause?.code ?? err.name})`;
+    }
+  }
+  if (cached) {
+    console.error(`am-i-cooked: ${failure}; using cached data from ${new Date(cached.at).toISOString()}`);
+    return cached.data;
+  }
+  throw new Error(`${failure}. Check your connection, or scan from cache with --offline.`);
 }
 
 async function osvMatch(packages) {
@@ -172,7 +234,7 @@ async function osvMatch(packages) {
       queries: chunk.map((p) => ({ package: { name: p.name, ecosystem: p.ecosystem }, version: p.version })),
     });
     const data = await getJson(`${OSV}/querybatch`, { method: 'POST', body });
-    if (!data) throw new Error('OSV.dev request failed');
+    if (!data) throw new Error('OSV.dev returned no data for this request');
     chunk.forEach((p, j) => {
       const ids = (data.results[j]?.vulns ?? []).map((v) => v.id);
       if (ids.length) matches.set(p.key, ids);

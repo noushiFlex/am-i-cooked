@@ -76,6 +76,13 @@ node skills/am-i-cooked/scripts/scan.mjs . --sarif  # GitHub code scanning
 node skills/am-i-cooked/scripts/scan.mjs . --markdown  # PR comment / job summary
 ```
 
+### Cache and offline
+
+Answers from OSV.dev and cve.now are cached for 6 hours in `~/.cache/am-i-cooked` (override with `AM_I_COOKED_CACHE`). Requests retry with backoff on rate limits and server errors, and fall back to stale cache if the network is down.
+
+- `--offline` answers from the cache only and never touches the network. It needs one earlier online scan of the same lockfiles, and it fails loudly (exit 2) on a cache miss instead of guessing.
+- `--no-cache` forces fresh answers.
+
 ### Accept a risk
 
 Hide a finding you reviewed and accept, with `--ignore=CVE-2020-28500,CVE-2021-23337` or a `.cookedignore` file at the root of the scanned directory:
