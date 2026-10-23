@@ -100,6 +100,14 @@ In GitHub Actions:
 
 ```yaml
 - uses: actions/checkout@v4
+- uses: noushiFlex/am-i-cooked@main
+  with:
+    fail-on: cooked   # any | cooked | kev | none
+```
+
+It writes the Markdown report to the job summary and fails the job at the threshold you pick. Or run the script yourself:
+
+```yaml
 - run: |
     git clone --depth 1 https://github.com/noushiFlex/am-i-cooked /tmp/aic
     node /tmp/aic/skills/am-i-cooked/scripts/scan.mjs . --fail-on=cooked

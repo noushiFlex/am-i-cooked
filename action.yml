@@ -1,0 +1,20 @@
+name: am-i-cooked
+description: Check lockfiles against live CVE data. Fails the job on vulnerable dependencies and writes a summary.
+author: noushiFlex
+branding:
+  icon: shield
+  color: red
+inputs:
+  path:
+    description: Directory to scan
+    default: '.'
+  fail-on:
+    description: any, cooked, kev or none
+    default: cooked
+runs:
+  using: composite
+  steps:
+    - shell: bash
+      run: |
+        node "${{ github.action_path }}/skills/am-i-cooked/scripts/scan.mjs" "${{ inputs.path }}" --markdown --fail-on=none >> "$GITHUB_STEP_SUMMARY"
+        node "${{ github.action_path }}/skills/am-i-cooked/scripts/scan.mjs" "${{ inputs.path }}" --fail-on="${{ inputs.fail-on }}"
