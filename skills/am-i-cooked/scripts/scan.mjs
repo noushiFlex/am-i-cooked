@@ -309,7 +309,7 @@ async function main() {
   if (asJson) console.log(JSON.stringify(report, null, 2));
   else if (asSarif) console.log(JSON.stringify(toSarif(report), null, 2));
   else printReport(report);
-  process.exit(exitCode(report));
+  process.exitCode = exitCode(report); // not process.exit(): it truncates piped stdout at 64 KB
 }
 
 function exitCode(r) {
@@ -365,5 +365,5 @@ function printReport(r) {
 
 main().catch((err) => {
   console.error(`am-i-cooked: ${err.message}`);
-  process.exit(2);
+  process.exitCode = 2;
 });
