@@ -13,12 +13,14 @@ const vulnerable = run(fixtures, '--json');
 assert.equal(vulnerable.status, 1, 'vulnerable fixtures must exit 1');
 const report = JSON.parse(vulnerable.stdout);
 assert.equal(report.verdict, 'cooked');
-assert.equal(report.lockfiles.length, 6, 'all six lockfile formats are found');
-for (const name of ['lodash', 'axios', 'requests', 'urllib3', 'minimist', 'http']) {
+assert.equal(report.lockfiles.length, 11, 'all eleven lockfile formats are found');
+for (const name of ['lodash', 'axios', 'requests', 'urllib3', 'minimist', 'http', 'serde_yaml', 'golang.org/x/crypto', 'nokogiri', 'symfony/http-kernel']) {
   assert.ok(report.findings.some((f) => f.package === name), `finding expected for ${name}`);
 }
 assert.ok(report.upgrades.every((u) => u.target === null || u.target !== u.installed), 'targets differ from installed');
 assert.ok(report.upgrades.find((u) => u.package === 'urllib3').majorJump, 'urllib3 1.x -> 2.x flagged as major');
+
+assert.ok(report.packagesScanned >= 16, 'bun.lock workspace entries are skipped, real packages counted');
 
 const empty = run(mkdtempSync(join(tmpdir(), 'aic-')));
 assert.equal(empty.status, 2, 'no lockfile must exit 2, never report safe');

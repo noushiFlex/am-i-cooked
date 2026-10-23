@@ -1,0 +1,9 @@
+GEM
+  remote: https://rubygems.org/
+  specs:
+    nokogiri (1.13.0-x86_64-linux)
+      racc (~> 1.4)
+    racc (1.6.0)
+
+PLATFORMS
+  ruby

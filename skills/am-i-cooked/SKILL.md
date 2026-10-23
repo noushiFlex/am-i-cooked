@@ -1,6 +1,6 @@
 ---
 name: am-i-cooked
-description: Check whether the current project is exposed to known CVEs and fix it safely. Scans lockfiles (npm, pnpm, yarn, pip, poetry, pub), matches the exact installed versions against live vulnerability data, gives a verdict (safe, a bit cooked, cooked), then upgrades on a separate branch and runs the tests. Use for "am i cooked", "check my dependencies", "any new CVE", "update vulnerable packages", "audit my lockfile".
+description: Check whether the current project is exposed to known CVEs and fix it safely. Scans lockfiles (npm, pnpm, yarn, bun, pip, poetry, pub, Cargo, Go, Bundler, Composer), matches the exact installed versions against live vulnerability data, gives a verdict (safe, a bit cooked, cooked), then upgrades on a separate branch and runs the tests. Use for "am i cooked", "check my dependencies", "any new CVE", "update vulnerable packages", "audit my lockfile".
 ---
 
 # am-i-cooked

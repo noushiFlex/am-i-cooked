@@ -6,7 +6,7 @@ import { join, relative } from 'node:path';
 
 const OSV = 'https://api.osv.dev/v1';
 const CVE_NOW = 'https://cve.now/api/v1/entries';
-const SKIP_DIRS = new Set(['node_modules', '.git', '.dart_tool', 'build', 'dist', '.venv', 'venv']);
+const SKIP_DIRS = new Set(['node_modules', '.git', '.dart_tool', 'build', 'dist', '.venv', 'venv', 'target', 'vendor']);
 const TEXT_LIMIT = 10;
 const OSV_LABEL_TO_CVSS = { CRITICAL: 9.5, HIGH: 7.5, MODERATE: 5, MEDIUM: 5, LOW: 2 };
 
@@ -78,6 +78,50 @@ function parsePubspec(text) {
   return out;
 }
 
+function parseCargo(text) {
+  return text
+    .split('[[package]]')
+    .slice(1)
+    .filter((block) => /^source = /m.test(block)) // no source = local workspace crate
+    .map((block) => ({
+      name: block.match(/^name = "([^"]+)"/m)?.[1],
+      version: block.match(/^version = "([^"]+)"/m)?.[1],
+    }))
+    .filter((p) => p.name && p.version);
+}
+
+function parseGoSum(text) {
+  return text
+    .split('\n')
+    .map((line) => line.match(/^(\S+) (v\S+?) h1:/))
+    .filter((m) => m && !m[2].endsWith('/go.mod'))
+    .map((m) => ({ name: m[1], version: m[2] }));
+}
+
+function parseGemfile(text) {
+  return text
+    .split('\n')
+    .map((line) => line.match(/^ {4}([A-Za-z0-9_.-]+) \((\d[\w.]*)(?:-[^)]*)?\)$/))
+    .filter(Boolean)
+    .map((m) => ({ name: m[1], version: m[2] }));
+}
+
+function parseComposer(text) {
+  const lock = JSON.parse(text);
+  return [...(lock.packages ?? []), ...(lock['packages-dev'] ?? [])]
+    .filter((p) => p.name && p.version)
+    .map((p) => ({ name: p.name, version: p.version.replace(/^v/, '') }));
+}
+
+function parseBun(text) {
+  const lock = JSON.parse(text.replace(/,(\s*[}\]])/g, '$1')); // bun.lock is JSON with trailing commas
+  return Object.values(lock.packages ?? {})
+    .map((entry) => (Array.isArray(entry) ? entry[0] : null))
+    .filter((spec) => typeof spec === 'string' && !spec.includes('workspace:'))
+    .map((spec) => ({ name: spec.slice(0, spec.lastIndexOf('@')), version: spec.slice(spec.lastIndexOf('@') + 1) }))
+    .filter((p) => p.name && p.version);
+}
+
 const LOCKFILES = {
   'package-lock.json': { ecosystem: 'npm', parse: parseNpmLock },
   'pnpm-lock.yaml': { ecosystem: 'npm', parse: parsePnpm },
@@ -85,6 +129,11 @@ const LOCKFILES = {
   'requirements.txt': { ecosystem: 'PyPI', parse: parseRequirements },
   'poetry.lock': { ecosystem: 'PyPI', parse: parsePoetry },
   'pubspec.lock': { ecosystem: 'Pub', parse: parsePubspec },
+  'Cargo.lock': { ecosystem: 'crates.io', parse: parseCargo },
+  'go.sum': { ecosystem: 'Go', parse: parseGoSum },
+  'Gemfile.lock': { ecosystem: 'RubyGems', parse: parseGemfile },
+  'composer.lock': { ecosystem: 'Packagist', parse: parseComposer },
+  'bun.lock': { ecosystem: 'npm', parse: parseBun },
 };
 
 function findLockfiles(dir, depth = 0) {

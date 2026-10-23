@@ -34,7 +34,7 @@ More in [examples/sample-output.txt](examples/sample-output.txt).
 
 ## Why
 
-- `npm audit` only knows npm. This reads npm, pnpm, yarn, pip, poetry and pub (Flutter/Dart) in one pass.
+- `npm audit` only knows npm. This reads npm, pnpm, yarn, bun, pip, poetry, pub (Flutter/Dart), Cargo, Go, Bundler and Composer in one pass.
 - It matches your **exact installed versions**, not the version ranges in your manifest.
 - It ranks by what matters: CISA KEV (actively exploited), exploit signals, CVSS.
 - It gives **one target version per package** that clears every finding, and warns on major jumps.
@@ -87,9 +87,13 @@ In GitHub Actions:
 
 | Lockfile | Ecosystem |
 | --- | --- |
-| `package-lock.json`, `pnpm-lock.yaml`, `yarn.lock` | npm |
+| `package-lock.json`, `pnpm-lock.yaml`, `yarn.lock`, `bun.lock` | npm |
 | `requirements.txt` (pinned with `==`), `poetry.lock` | PyPI |
 | `pubspec.lock` | Pub (Dart/Flutter) |
+| `Cargo.lock` | crates.io (Rust) |
+| `go.sum` | Go |
+| `Gemfile.lock` | RubyGems |
+| `composer.lock` | Packagist (PHP) |
 
 Monorepos work: lockfiles are found up to four levels deep, skipping `node_modules`, `.git`, `build` and similar.
 
@@ -114,7 +118,7 @@ A **safe** verdict is not proof of safety. Vulnerabilities without version data 
 
 ## Roadmap
 
-- [ ] `Cargo.lock`, `go.sum`, `Gemfile.lock`, `composer.lock`, `bun.lock`
+- [x] `Cargo.lock`, `go.sum`, `Gemfile.lock`, `composer.lock`, `bun.lock`
 - [ ] `--fail-on kev|critical|any` for CI
 - [ ] SARIF output for GitHub code scanning
 

@@ -1,0 +1,9 @@
+{
+  "lockfileVersion": 1,
+  "workspaces": { "": { "name": "x", }, },
+  "packages": {
+    "x": ["x@workspace:."],
+    "ms": ["ms@2.0.0", "", {}, "sha512-x"],
+    "@types/node": ["@types/node@20.0.0", "", {}, "sha512-y"],
+  }
+}

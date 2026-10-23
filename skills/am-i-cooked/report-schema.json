@@ -15,7 +15,7 @@
         "type": "object",
         "required": ["ecosystem", "package", "installed", "target", "fixes", "unfixed", "worstCvss", "majorJump"],
         "properties": {
-          "ecosystem": { "enum": ["npm", "PyPI", "Pub"] },
+          "ecosystem": { "enum": ["npm", "PyPI", "Pub", "crates.io", "Go", "RubyGems", "Packagist"] },
           "package": { "type": "string" },
           "installed": { "type": "string" },
           "target": { "type": ["string", "null"], "description": "Lowest version that clears every fixable finding. Null if no fix is known." },
@@ -34,7 +34,7 @@
         "properties": {
           "id": { "type": "string", "description": "CVE id when known, otherwise GHSA or OSV id." },
           "title": { "type": "string" },
-          "ecosystem": { "enum": ["npm", "PyPI", "Pub"] },
+          "ecosystem": { "enum": ["npm", "PyPI", "Pub", "crates.io", "Go", "RubyGems", "Packagist"] },
           "package": { "type": "string" },
           "installed": { "type": "string" },
           "fixedIn": { "type": ["string", "null"] },

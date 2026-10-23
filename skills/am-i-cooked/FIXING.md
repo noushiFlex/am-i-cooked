@@ -21,7 +21,12 @@ Only after the user agreed to fix. The scanner's `upgrades` list gives one targe
    | `yarn.lock` | `yarn add <pkg>@<target>` |
    | `requirements.txt` | edit the pin, then `pip install -r requirements.txt` |
    | `poetry.lock` | `poetry add <pkg>@<target>` |
+   | `bun.lock` | `bun add <pkg>@<target>` |
    | `pubspec.lock` | `flutter pub upgrade <pkg>` (check the SDK constraint first) |
+   | `Cargo.lock` | `cargo update -p <pkg> --precise <target>` |
+   | `go.sum` | `go get <module>@v<target>` then `go mod tidy` |
+   | `Gemfile.lock` | `bundle update <gem> --conservative` |
+   | `composer.lock` | `composer update <vendor/pkg>` |
 
 4. Transitive dependency (not in the manifest)? Prefer upgrading the parent. Use overrides (`overrides`, `resolutions`, `dependency_overrides`) only as a last resort, and say so.
 5. Run tests and build. If they fail: revert that package (`git checkout -- .`), mark it "needs manual work", continue with the next one.
