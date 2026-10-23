@@ -1,34 +1,34 @@
-Verdict: COOKED  (9 packages, 6 lockfile(s))
+Verdict: COOKED  (24 packages, 18 lockfile(s))
+Risk score: 100/100  (9 known exploited, 121 theoretical)
+WARNING 1 dependency not checked (git/file, not a published version): mygem. Use --strict to fail on this.
 
 Upgrade plan (one version clears every finding for that package):
-  urllib3  1.25.0 -> 2.8.0  (MAJOR jump, check changelog)
+  golang.org/x/crypto  v0.0.0-20200622213623-75b288015ac9 -> 0.56.0  (1 finding(s) have no known fix)
+  org.apache.logging.log4j:log4j-core  2.14.1 -> 2.25.4
+  pyyaml  5.3 -> 5.4
+  nokogiri  1.13.0 -> 1.19.4
+  github.com/apple/swift-nio  2.0.0 -> 2.100.0
+  urllib3  1.25.0 -> 2.8.0  (MAJOR jump, check changelog; safer: 1.26.19 clears 4, 6 still need the major)
   axios  0.21.1 -> 0.33.0
-  lodash  4.17.20 -> 4.18.0
+  lodash  4.17.20 -> 4.18.0  (transitive: upgrade the parent first)
+  symfony/http-kernel  4.4.0 -> 4.4.50
+  Newtonsoft.Json  9.0.1 -> 13.0.1  (MAJOR jump, check changelog)
   idna  3.7 -> 3.15
   requests  2.19.0 -> 2.33.0
   http  0.12.0 -> 0.13.3
+  serde_yaml  0.8.0 -> 0.8.4
   @babel/core  7.0.0 -> 7.29.6
+  plug  1.5.0 -> 1.16.6
+  aeson  1.0.0.0 -> 2.2.5.1  (MAJOR jump, check changelog)
+  base  4.14.1.0 -> no fix known  (1 finding(s) have no known fix)
+  pandoc  2.0 -> 3.1.4  (MAJOR jump, check changelog)
   minimist  1.2.0 -> 1.2.6
 
-CVE-2025-66471  CVSS 8.9
-  urllib3@1.25.0 -> 2.6.0  (api/poetry.lock)
-  urllib3 Streaming API improperly handles highly compressed data
+CVE-2026-46595  CVSS 10
+  golang.org/x/crypto@v0.0.0-20200622213623-75b288015ac9 -> 0.52.0  (go/go.sum)
+  Invoking  VerifiedPublicKeyCallback permissions skip enforcement in golang.org/x/crypto/ssh
+  https://cve.now/CVE-2026-46595
 
-CVE-2026-21441  CVSS 8.9
-  urllib3@1.25.0 -> 2.6.3  (api/poetry.lock)
-  urllib3 vulnerable to decompression-bomb safeguard bypass when following HTTP redirects (streaming API)
-
-CVE-2025-66418  CVSS 8.9
-  urllib3@1.25.0 -> 2.6.0  (api/poetry.lock)
-  urllib3 allows an unbounded number of links in the decompression chain
-
-CVE-2026-97689  CVSS 8.9
-  urllib3@1.25.0 -> 2.8.0  (api/poetry.lock)
-  urllib3: HTTPResponse.stream()/read_chunked() buffers an unbounded chunk-size line into memory
-
-CVE-2026-44492  CVSS 8.6
-  axios@0.21.1 -> 0.32.0  (yr/yarn.lock)
-  Axios: shouldBypassProxy does not recognize IPv4-mapped IPv6 addresses, allowing NO_PROXY bypass (incomplete f
-
-CVE-2026-44431  CVSS 8.2
-  urllib3@1.25.0 -> 2.7.0  (api/poetry.lock)
+CVE-2021-44228  CVSS 10  [KEV, exploit seen]
+  org.apache.logging.log4j:log4j-core@2.14.1 -> 2.15.0  (jvm/gradle.lockfile)
+  Apache Log4j2 JNDI features do not protect against attacker controlled LDAP and other JNDI related endpoints

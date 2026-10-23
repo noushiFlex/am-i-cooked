@@ -11,26 +11,26 @@
 <rect class="bg" width="900" height="554" rx="10"/>
 <rect class="bar" width="900" height="0"/>
 <text class="l cmd" x="20" y="34" style="animation-delay:0.00s">$&#160;am-i-cooked&#160;.</text>
-<text class="l bad" x="20" y="56" style="animation-delay:0.35s">Verdict:&#160;COOKED&#160;&#160;(17&#160;packages,&#160;12&#160;lockfile(s))</text>
-<text class="l fg" x="20" y="78" style="animation-delay:0.70s">Risk&#160;score:&#160;94/100&#160;&#160;(4&#160;known&#160;exploited,&#160;106&#160;theoretical)</text>
-<text class="l fg" x="20" y="100" style="animation-delay:1.05s"></text>
-<text class="l dim" x="20" y="122" style="animation-delay:1.40s">Upgrade&#160;plan&#160;(one&#160;version&#160;clears&#160;every&#160;finding&#160;for&#160;that&#160;package):</text>
-<text class="l fg" x="20" y="144" style="animation-delay:1.75s">&#160;&#160;golang.org/x/crypto&#160;&#160;v0.0.0-20200622213623-75b288015ac9&#160;-&gt;&#160;0.56.0&#160;&#160;(1&#160;finding…</text>
-<text class="l fg" x="20" y="166" style="animation-delay:2.10s">&#160;&#160;pyyaml&#160;&#160;5.3&#160;-&gt;&#160;5.4</text>
-<text class="l fg" x="20" y="188" style="animation-delay:2.45s">&#160;&#160;nokogiri&#160;&#160;1.13.0&#160;-&gt;&#160;1.19.4</text>
-<text class="l fg" x="20" y="210" style="animation-delay:2.80s">&#160;&#160;urllib3&#160;&#160;1.25.0&#160;-&gt;&#160;2.8.0&#160;&#160;<tspan class="warn">(MAJOR&#160;jump,&#160;check&#160;changelog;&#160;safer:&#160;1.26.19&#160;clears…</tspan></text>
-<text class="l fg" x="20" y="232" style="animation-delay:3.15s">&#160;&#160;axios&#160;&#160;0.21.1&#160;-&gt;&#160;0.33.0</text>
-<text class="l fg" x="20" y="254" style="animation-delay:3.50s">&#160;&#160;lodash&#160;&#160;4.17.20&#160;-&gt;&#160;4.18.0</text>
-<text class="l fg" x="20" y="276" style="animation-delay:3.85s">&#160;&#160;symfony/http-kernel&#160;&#160;4.4.0&#160;-&gt;&#160;4.4.50</text>
-<text class="l fg" x="20" y="298" style="animation-delay:4.20s">&#160;&#160;idna&#160;&#160;3.7&#160;-&gt;&#160;3.15</text>
-<text class="l fg" x="20" y="320" style="animation-delay:4.55s">&#160;&#160;requests&#160;&#160;2.19.0&#160;-&gt;&#160;2.33.0</text>
-<text class="l fg" x="20" y="342" style="animation-delay:4.90s">&#160;&#160;http&#160;&#160;0.12.0&#160;-&gt;&#160;0.13.3</text>
-<text class="l fg" x="20" y="364" style="animation-delay:5.25s">&#160;&#160;serde_yaml&#160;&#160;0.8.0&#160;-&gt;&#160;0.8.4</text>
-<text class="l fg" x="20" y="386" style="animation-delay:5.60s">&#160;&#160;@babel/core&#160;&#160;7.0.0&#160;-&gt;&#160;7.29.6</text>
-<text class="l fg" x="20" y="408" style="animation-delay:5.95s">&#160;&#160;minimist&#160;&#160;1.2.0&#160;-&gt;&#160;1.2.6</text>
-<text class="l fg" x="20" y="430" style="animation-delay:6.30s"></text>
-<text class="l id" x="20" y="452" style="animation-delay:6.65s">CVE-2026-46595&#160;&#160;CVSS&#160;10</text>
-<text class="l fg" x="20" y="474" style="animation-delay:7.00s">&#160;&#160;golang.org/x/crypto@v0.0.0-20200622213623-75b288015ac9&#160;-&gt;&#160;0.52.0&#160;&#160;(go/go.sum)</text>
-<text class="l fg" x="20" y="496" style="animation-delay:7.35s">&#160;&#160;Invoking&#160;&#160;VerifiedPublicKeyCallback&#160;permissions&#160;skip&#160;enforcement&#160;in&#160;golang.or…</text>
-<text class="l fg" x="20" y="518" style="animation-delay:7.70s">&#160;&#160;https://cve.now/CVE-2026-46595</text>
+<text class="l bad" x="20" y="56" style="animation-delay:0.35s">Verdict:&#160;COOKED&#160;&#160;(24&#160;packages,&#160;18&#160;lockfile(s))</text>
+<text class="l fg" x="20" y="78" style="animation-delay:0.70s">Risk&#160;score:&#160;100/100&#160;&#160;(9&#160;known&#160;exploited,&#160;121&#160;theoretical)</text>
+<text class="l fg" x="20" y="100" style="animation-delay:1.05s">WARNING&#160;1&#160;dependency&#160;not&#160;checked&#160;(git/file,&#160;not&#160;a&#160;published&#160;version):&#160;mygem.&#160;Us…</text>
+<text class="l fg" x="20" y="122" style="animation-delay:1.40s"></text>
+<text class="l dim" x="20" y="144" style="animation-delay:1.75s">Upgrade&#160;plan&#160;(one&#160;version&#160;clears&#160;every&#160;finding&#160;for&#160;that&#160;package):</text>
+<text class="l fg" x="20" y="166" style="animation-delay:2.10s">&#160;&#160;golang.org/x/crypto&#160;&#160;v0.0.0-20200622213623-75b288015ac9&#160;-&gt;&#160;0.56.0&#160;&#160;(1&#160;finding…</text>
+<text class="l fg" x="20" y="188" style="animation-delay:2.45s">&#160;&#160;org.apache.logging.log4j:log4j-core&#160;&#160;2.14.1&#160;-&gt;&#160;2.25.4</text>
+<text class="l fg" x="20" y="210" style="animation-delay:2.80s">&#160;&#160;pyyaml&#160;&#160;5.3&#160;-&gt;&#160;5.4</text>
+<text class="l fg" x="20" y="232" style="animation-delay:3.15s">&#160;&#160;nokogiri&#160;&#160;1.13.0&#160;-&gt;&#160;1.19.4</text>
+<text class="l fg" x="20" y="254" style="animation-delay:3.50s">&#160;&#160;github.com/apple/swift-nio&#160;&#160;2.0.0&#160;-&gt;&#160;2.100.0</text>
+<text class="l fg" x="20" y="276" style="animation-delay:3.85s">&#160;&#160;urllib3&#160;&#160;1.25.0&#160;-&gt;&#160;2.8.0&#160;&#160;<tspan class="warn">(MAJOR&#160;jump,&#160;check&#160;changelog;&#160;safer:&#160;1.26.19&#160;clears…</tspan></text>
+<text class="l fg" x="20" y="298" style="animation-delay:4.20s">&#160;&#160;axios&#160;&#160;0.21.1&#160;-&gt;&#160;0.33.0</text>
+<text class="l fg" x="20" y="320" style="animation-delay:4.55s">&#160;&#160;lodash&#160;&#160;4.17.20&#160;-&gt;&#160;4.18.0&#160;&#160;(transitive:&#160;upgrade&#160;the&#160;parent&#160;first)</text>
+<text class="l fg" x="20" y="342" style="animation-delay:4.90s">&#160;&#160;symfony/http-kernel&#160;&#160;4.4.0&#160;-&gt;&#160;4.4.50</text>
+<text class="l fg" x="20" y="364" style="animation-delay:5.25s">&#160;&#160;Newtonsoft.Json&#160;&#160;9.0.1&#160;-&gt;&#160;13.0.1&#160;&#160;<tspan class="warn">(MAJOR&#160;jump,&#160;check&#160;changelog)</tspan></text>
+<text class="l fg" x="20" y="386" style="animation-delay:5.60s">&#160;&#160;idna&#160;&#160;3.7&#160;-&gt;&#160;3.15</text>
+<text class="l fg" x="20" y="408" style="animation-delay:5.95s">&#160;&#160;requests&#160;&#160;2.19.0&#160;-&gt;&#160;2.33.0</text>
+<text class="l fg" x="20" y="430" style="animation-delay:6.30s">&#160;&#160;http&#160;&#160;0.12.0&#160;-&gt;&#160;0.13.3</text>
+<text class="l fg" x="20" y="452" style="animation-delay:6.65s">&#160;&#160;serde_yaml&#160;&#160;0.8.0&#160;-&gt;&#160;0.8.4</text>
+<text class="l fg" x="20" y="474" style="animation-delay:7.00s">&#160;&#160;@babel/core&#160;&#160;7.0.0&#160;-&gt;&#160;7.29.6</text>
+<text class="l fg" x="20" y="496" style="animation-delay:7.35s">&#160;&#160;plug&#160;&#160;1.5.0&#160;-&gt;&#160;1.16.6</text>
+<text class="l fg" x="20" y="518" style="animation-delay:7.70s">&#160;&#160;aeson&#160;&#160;1.0.0.0&#160;-&gt;&#160;2.2.5.1&#160;&#160;<tspan class="warn">(MAJOR&#160;jump,&#160;check&#160;changelog)</tspan></text>
 </svg>
