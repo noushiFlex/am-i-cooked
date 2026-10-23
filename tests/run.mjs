@@ -13,14 +13,14 @@ const vulnerable = run(fixtures, '--json');
 assert.equal(vulnerable.status, 1, 'vulnerable fixtures must exit 1');
 const report = JSON.parse(vulnerable.stdout);
 assert.equal(report.verdict, 'cooked');
-assert.equal(report.lockfiles.length, 12, 'all twelve lockfile formats are found');
-for (const name of ['lodash', 'axios', 'requests', 'urllib3', 'minimist', 'http', 'serde_yaml', 'golang.org/x/crypto', 'nokogiri', 'symfony/http-kernel', 'pyyaml']) {
+assert.equal(report.lockfiles.length, 18, 'all eighteen lockfile formats are found');
+for (const name of ['lodash', 'axios', 'requests', 'urllib3', 'minimist', 'http', 'serde_yaml', 'golang.org/x/crypto', 'nokogiri', 'symfony/http-kernel', 'pyyaml', 'org.apache.logging.log4j:log4j-core', 'Newtonsoft.Json', 'plug', 'github.com/apple/swift-nio', 'aeson', 'pandoc']) {
   assert.ok(report.findings.some((f) => f.package === name), `finding expected for ${name}`);
 }
 assert.ok(report.upgrades.every((u) => u.target === null || u.target !== u.installed), 'targets differ from installed');
 assert.ok(report.upgrades.find((u) => u.package === 'urllib3').majorJump, 'urllib3 1.x -> 2.x flagged as major');
 
-assert.ok(report.packagesScanned >= 17, 'bun.lock workspace entries are skipped, real packages counted');
+assert.ok(report.packagesScanned >= 23, 'bun.lock workspace entries are skipped, real packages counted');
 
 assert.equal(run(fixtures, '--fail-on=none').status, 0, '--fail-on=none never fails on findings');
 assert.equal(run(fixtures, '--fail-on=bogus').status, 2, 'invalid --fail-on is rejected');

@@ -1,0 +1,1 @@
+{"version":1,"dependencies":{"net6.0":{"Newtonsoft.Json":{"type":"Direct","requested":"[9.0.1, )","resolved":"9.0.1","contentHash":"x"},"MyLib":{"type":"Project"}}}}

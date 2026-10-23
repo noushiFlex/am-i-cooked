@@ -1,0 +1,4 @@
+active-repositories: hackage.haskell.org:merge
+constraints: any.aeson ==1.0.0.0,
+             any.base ==4.14.1.0,
+             aeson +fast

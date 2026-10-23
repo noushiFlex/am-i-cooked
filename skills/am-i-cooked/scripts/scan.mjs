@@ -13,7 +13,7 @@ const OSV = process.env.AM_I_COOKED_OSV_URL ?? 'https://api.osv.dev/v1';
 const CVE_NOW = process.env.AM_I_COOKED_CVE_NOW_URL ?? 'https://cve.now/api/v1/entries';
 const CACHE_DIR = process.env.AM_I_COOKED_CACHE ?? join(homedir(), '.cache', 'am-i-cooked');
 const CACHE_TTL_MS = 6 * 60 * 60 * 1000;
-const SKIP_DIRS = new Set(['node_modules', '.git', '.dart_tool', 'build', 'dist', '.venv', 'venv', 'target', 'vendor']);
+const SKIP_DIRS = new Set(['node_modules', '.git', '.dart_tool', 'build', 'dist', '.venv', 'venv', 'target', 'vendor', '.build', '.gradle', 'Pods']);
 const TEXT_LIMIT = 10;
 const OSV_LABEL_TO_CVSS = { CRITICAL: 9.5, HIGH: 7.5, MODERATE: 5, MEDIUM: 5, LOW: 2 };
 
@@ -139,6 +139,48 @@ function parseBun(text) {
     .filter((p) => p.name && p.version);
 }
 
+function parseGradle(text) {
+  return text
+    .split('\n')
+    .map((line) => line.match(/^([^#=\s:]+:[^#=\s:]+):([^=\s:]+)=/))
+    .filter(Boolean)
+    .map((m) => ({ name: m[1], version: m[2] }));
+}
+
+function parseNuget(text) {
+  const lock = JSON.parse(text);
+  return Object.values(lock.dependencies ?? {}).flatMap((framework) =>
+    Object.entries(framework)
+      .filter(([, dep]) => dep.resolved && dep.type !== 'Project')
+      .map(([name, dep]) => ({ name, version: dep.resolved })));
+}
+
+function parseMix(text) {
+  return text
+    .split('\n')
+    .map((line) => line.match(/^\s*"[^"]+": \{:hex, :([^,]+), "([^"]+)"/))
+    .filter(Boolean)
+    .map((m) => ({ name: m[1], version: m[2] }));
+}
+
+// Swift Package Manager: v1 files nest pins under "object", v2/v3 do not. Pins on a branch or revision have no version.
+function parseSwiftResolved(text) {
+  const lock = JSON.parse(text);
+  const pins = lock.pins ?? lock.object?.pins ?? [];
+  return pins
+    .map((pin) => ({ url: pin.location ?? pin.repositoryURL, version: pin.state?.version }))
+    .filter((pin) => pin.url && pin.version)
+    .map((pin) => ({ name: pin.url.replace(/^[a-z+]+:\/\//, '').replace(/^git@([^:]+):/, '$1/').replace(/\.git$/, ''), version: pin.version }));
+}
+
+function parseCabalFreeze(text) {
+  return [...text.matchAll(/any\.([A-Za-z0-9-]+)\s*==\s*(\d[\d.]*)/g)].map((m) => ({ name: m[1], version: m[2] }));
+}
+
+function parseStackLock(text) {
+  return [...text.matchAll(/hackage:\s*([A-Za-z0-9-]+?)-(\d[\d.]*)@/g)].map((m) => ({ name: m[1], version: m[2] }));
+}
+
 const LOCKFILES = {
   'package-lock.json': { ecosystem: 'npm', parse: parseNpmLock },
   'pnpm-lock.yaml': { ecosystem: 'npm', parse: parsePnpm },
@@ -152,9 +194,18 @@ const LOCKFILES = {
   'Gemfile.lock': { ecosystem: 'RubyGems', parse: parseGemfile },
   'composer.lock': { ecosystem: 'Packagist', parse: parseComposer },
   'bun.lock': { ecosystem: 'npm', parse: parseBun },
+  'gradle.lockfile': { ecosystem: 'Maven', parse: parseGradle },
+  'packages.lock.json': { ecosystem: 'NuGet', parse: parseNuget },
+  'mix.lock': { ecosystem: 'Hex', parse: parseMix },
+  'Package.resolved': { ecosystem: 'SwiftURL', parse: parseSwiftResolved },
+  'cabal.project.freeze': { ecosystem: 'Hackage', parse: parseCabalFreeze },
+  'stack.yaml.lock': { ecosystem: 'Hackage', parse: parseStackLock },
 };
 
-const lockfileFor = (name) => LOCKFILES[name] ?? (/^requirements.*\.txt$/.test(name) ? LOCKFILES['requirements.txt'] : null);
+const lockfileFor = (name) =>
+  LOCKFILES[name]
+  ?? (/^requirements.*\.txt$/.test(name) ? LOCKFILES['requirements.txt'] : null)
+  ?? (/gradle\.lockfile$/.test(name) ? LOCKFILES['gradle.lockfile'] : null); // also buildscript-gradle.lockfile
 
 function findLockfiles(dir, depth = 0) {
   if (depth > 4) return [];

@@ -1,0 +1,5 @@
+packages:
+- completed:
+    hackage: pandoc-2.0@sha256:abc,1234
+    pantry-tree:
+      size: 1

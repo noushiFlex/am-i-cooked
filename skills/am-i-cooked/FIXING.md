@@ -53,6 +53,12 @@ Never ask a question the scan output already answers.
    | `go.sum` | `go get <module>@v<target>` then `go mod tidy` |
    | `Gemfile.lock` | `bundle update <gem> --conservative` |
    | `composer.lock` | `composer update <vendor/pkg>` |
+   | `gradle.lockfile` | bump the version in the build file, then `./gradlew dependencies --write-locks` |
+   | `packages.lock.json` | `dotnet add package <pkg> --version <target>` |
+   | `mix.lock` | `mix deps.update <pkg>` (check the requirement in `mix.exs` first) |
+   | `Package.resolved` | `swift package update <pkg>` (check the requirement in `Package.swift` first) |
+   | `cabal.project.freeze` | relax the bound in the `.cabal` file, then `cabal freeze` |
+   | `stack.yaml.lock` | bump the version in `extra-deps` or the snapshot, then `stack build` |
 
 2. Transitive dependency (not in the manifest)? Prefer upgrading the parent. Use overrides (`overrides`, `resolutions`, `dependency_overrides`) only as a last resort, and say so.
 3. Run tests and build. If they fail: revert that package (`git checkout -- .`), mark it "needs manual work", continue with the next one.

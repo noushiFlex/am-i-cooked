@@ -13,7 +13,7 @@ node skills/am-i-cooked/scripts/scan.mjs <dir>
 
 ## Good first contributions
 
-- A new lockfile parser (`uv.lock`, `Podfile.lock`, `packages.lock.json`, `mix.lock`). Add the parser and its entry in `LOCKFILES` in `scan.mjs`, a fixture in `tests/fixtures/`, and an assertion in `tests/run.mjs`.
+- A new lockfile parser (`pom.xml` resolved through Maven, `pnpm` catalogs, `deno.lock`, `pdm.lock`). Add the parser and its entry in `LOCKFILES` in `scan.mjs`, a fixture in `tests/fixtures/`, and an assertion in `tests/run.mjs`.
 - Pagination of OSV `querybatch` results.
 - Better transitive-dependency fix advice in `FIXING.md`.
 

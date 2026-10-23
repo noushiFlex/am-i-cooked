@@ -1,0 +1,1 @@
+{"pins":[{"identity":"swift-nio","kind":"remoteSourceControl","location":"https://github.com/apple/swift-nio.git","state":{"revision":"abc","version":"2.0.0"}},{"identity":"wip","kind":"remoteSourceControl","location":"https://github.com/x/wip.git","state":{"branch":"main","revision":"def"}}],"version":2}

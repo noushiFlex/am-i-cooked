@@ -10,7 +10,7 @@ Used by `scripts/scan.mjs`. Read this only to debug the scanner or query by hand
 {"queries":[{"package":{"name":"lodash","ecosystem":"npm"},"version":"4.17.20"}]}
 ```
 
-Returns, per query, the vulnerability ids that affect that exact version. Ecosystem names are case-sensitive: `npm`, `PyPI`, `Pub`, `crates.io`, `Go`, `RubyGems`, `Packagist`.
+Returns, per query, the vulnerability ids that affect that exact version. Ecosystem names are case-sensitive: `npm`, `PyPI`, `Pub`, `crates.io`, `Go`, `RubyGems`, `Packagist`, `Maven`, `NuGet`, `Hex`, `SwiftURL`, `Hackage`. OSV.dev has no CocoaPods ecosystem.
 
 Fallback details for one id: `GET https://api.osv.dev/v1/vulns/<id>`.
 

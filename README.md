@@ -36,7 +36,7 @@ More in [examples/sample-output.txt](examples/sample-output.txt).
 
 ## Why
 
-- `npm audit` only knows npm. This reads npm, pnpm, yarn, bun, pip, poetry, pub (Flutter/Dart), Cargo, Go, Bundler and Composer in one pass.
+- `npm audit` only knows npm. This reads npm, pnpm, yarn, bun, pip, poetry, uv, pub (Flutter/Dart), Cargo, Go, Bundler, Composer, Gradle, NuGet, Hex, Swift and Haskell lockfiles in one pass.
 - It matches your **exact installed versions**, not the version ranges in your manifest.
 - It ranks by what matters: CISA KEV (actively exploited), exploit signals, CVSS.
 - It gives **one target version per package** that clears every finding, and warns on major jumps.
@@ -157,6 +157,13 @@ With code scanning alerts:
 | `go.sum` | Go |
 | `Gemfile.lock` | RubyGems |
 | `composer.lock` | Packagist (PHP) |
+| `gradle.lockfile` (also `*-gradle.lockfile`) | Maven (Java/Kotlin) |
+| `packages.lock.json` | NuGet (.NET) |
+| `mix.lock` | Hex (Elixir) |
+| `Package.resolved` | SwiftURL (Swift Package Manager) |
+| `cabal.project.freeze`, `stack.yaml.lock` | Hackage (Haskell) |
+
+Not supported: `pom.xml` (version ranges, no lockfile: use `mvn dependency:tree` or Gradle locking), CocoaPods (OSV.dev has no CocoaPods ecosystem, so nothing could be matched), and manifests without a lockfile.
 
 Monorepos work: lockfiles are found up to four levels deep, skipping `node_modules`, `.git`, `build` and similar.
 
