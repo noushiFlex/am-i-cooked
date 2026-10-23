@@ -1,0 +1,11 @@
+version = 1
+
+[[package]]
+name = "myproj"
+version = "0.1.0"
+source = { editable = "." }
+
+[[package]]
+name = "pyyaml"
+version = "5.3"
+source = { registry = "https://pypi.org/simple" }

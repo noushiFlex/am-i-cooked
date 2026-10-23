@@ -67,6 +67,7 @@ function parsePoetry(text) {
   return text
     .split('[[package]]')
     .slice(1)
+    .filter((block) => !/^source = \{ (editable|virtual) /m.test(block)) // uv: the project itself
     .map((block) => ({
       name: block.match(/^name = "([^"]+)"/m)?.[1],
       version: block.match(/^version = "([^"]+)"/m)?.[1],
@@ -136,6 +137,7 @@ const LOCKFILES = {
   'yarn.lock': { ecosystem: 'npm', parse: parseYarn },
   'requirements.txt': { ecosystem: 'PyPI', parse: parseRequirements },
   'poetry.lock': { ecosystem: 'PyPI', parse: parsePoetry },
+  'uv.lock': { ecosystem: 'PyPI', parse: parsePoetry },
   'pubspec.lock': { ecosystem: 'Pub', parse: parsePubspec },
   'Cargo.lock': { ecosystem: 'crates.io', parse: parseCargo },
   'go.sum': { ecosystem: 'Go', parse: parseGoSum },
@@ -144,11 +146,13 @@ const LOCKFILES = {
   'bun.lock': { ecosystem: 'npm', parse: parseBun },
 };
 
+const lockfileFor = (name) => LOCKFILES[name] ?? (/^requirements.*\.txt$/.test(name) ? LOCKFILES['requirements.txt'] : null);
+
 function findLockfiles(dir, depth = 0) {
   if (depth > 4) return [];
   return readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
     if (entry.isDirectory()) return SKIP_DIRS.has(entry.name) ? [] : findLockfiles(join(dir, entry.name), depth + 1);
-    return LOCKFILES[entry.name] ? [join(dir, entry.name)] : [];
+    return lockfileFor(entry.name) ? [join(dir, entry.name)] : [];
   });
 }
 
@@ -237,8 +241,8 @@ function smallestFix(details, pkg) {
   return fixes[0] ?? null;
 }
 
-function verdictFor(findings, lockfileCount) {
-  if (!lockfileCount) return 'unknown';
+function verdictFor(findings, lockfileCount, packageCount) {
+  if (!lockfileCount || !packageCount) return 'unknown'; // nothing was actually checked, never say safe
   if (!findings.length) return 'safe';
   const cooked = findings.some((f) => f.kev || (f.cvss ?? 0) >= 9 || (f.likelyExploited && (f.cvss ?? 0) >= 7));
   return cooked ? 'cooked' : 'a bit cooked';
@@ -276,7 +280,7 @@ async function main() {
   const lockfiles = findLockfiles(root);
   const packages = new Map();
   for (const file of lockfiles) {
-    const { ecosystem, parse } = LOCKFILES[file.split('/').pop()];
+    const { ecosystem, parse } = lockfileFor(file.split('/').pop());
     for (const p of parse(readFileSync(file, 'utf8'))) {
       const key = `${ecosystem}:${p.name}@${p.version}`;
       if (!packages.has(key)) packages.set(key, { ...p, ecosystem, key, lockfile: relative(root, file) });
@@ -314,7 +318,7 @@ async function main() {
   findings.sort((a, b) => (b.cvss ?? 0) - (a.cvss ?? 0));
 
   const report = {
-    verdict: verdictFor(findings, lockfiles.length),
+    verdict: verdictFor(findings, lockfiles.length, packages.size),
     scannedAt: new Date().toISOString(),
     lockfiles: lockfiles.map((f) => relative(root, f)),
     packagesScanned: packages.size,
@@ -355,7 +359,7 @@ function toMarkdown(r) {
     if (urgent.length) lines.push('', `**Actively exploited or exploit seen:** ${urgent.map((f) => `[${f.id}](https://cve.now/${f.id})`).join(', ')}`);
   }
   if (r.verdict === 'safe') lines.push('', 'No known vulnerability matches. This is not proof of safety.');
-  if (r.verdict === 'unknown') lines.push('', 'No supported lockfile found. Nothing was checked.');
+  if (r.verdict === 'unknown') lines.push('', 'Nothing was checked: no supported lockfile, or no exact pinned versions (ranges like `>=1.0` cannot be matched).');
   return lines.join('\n');
 }
 
@@ -381,6 +385,7 @@ function toSarif(r) {
 function printReport(r) {
   console.log(`Verdict: ${r.verdict.toUpperCase()}  (${r.packagesScanned} packages, ${r.lockfiles.length} lockfile(s))`);
   if (!r.lockfiles.length) console.log('No supported lockfile found. Nothing was checked.');
+  else if (!r.packagesScanned) console.log('Dependency files found, but none pins an exact version (ranges like ">=1.0" cannot be matched). Nothing was checked.\nPin versions first (uv lock, pip freeze > requirements.txt, poetry lock) and re-run.');
   if (r.upgrades.length) {
     console.log('\nUpgrade plan (one version clears every finding for that package):');
     for (const u of r.upgrades) {

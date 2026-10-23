@@ -127,7 +127,7 @@ With code scanning alerts:
 | Lockfile | Ecosystem |
 | --- | --- |
 | `package-lock.json`, `pnpm-lock.yaml`, `yarn.lock`, `bun.lock` | npm |
-| `requirements.txt` (pinned with `==`), `poetry.lock` | PyPI |
+| `requirements*.txt` (pinned with `==`), `poetry.lock`, `uv.lock` | PyPI |
 | `pubspec.lock` | Pub (Dart/Flutter) |
 | `Cargo.lock` | crates.io (Rust) |
 | `go.sum` | Go |
@@ -153,7 +153,7 @@ Details and API endpoints: [SOURCES.md](skills/am-i-cooked/SOURCES.md).
 
 ## Limits
 
-A **safe** verdict is not proof of safety. Vulnerabilities without version data cannot be matched, vendor advisories without a CVE or GHSA record are not covered, and private registries and git dependencies are not resolved.
+A **safe** verdict is not proof of safety. If nothing was checked (no lockfile, or only unpinned ranges like `django>=5.1`), the verdict is **unknown**, never safe. Vulnerabilities without version data cannot be matched, vendor advisories without a CVE or GHSA record are not covered, and private registries and git dependencies are not resolved.
 
 ## Roadmap
 

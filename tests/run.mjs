@@ -1,6 +1,6 @@
 // Integration test: scans the vulnerable lockfiles in tests/fixtures (needs network).
 import { spawnSync } from 'node:child_process';
-import { mkdtempSync } from 'node:fs';
+import { mkdtempSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import assert from 'node:assert/strict';
@@ -13,14 +13,14 @@ const vulnerable = run(fixtures, '--json');
 assert.equal(vulnerable.status, 1, 'vulnerable fixtures must exit 1');
 const report = JSON.parse(vulnerable.stdout);
 assert.equal(report.verdict, 'cooked');
-assert.equal(report.lockfiles.length, 11, 'all eleven lockfile formats are found');
-for (const name of ['lodash', 'axios', 'requests', 'urllib3', 'minimist', 'http', 'serde_yaml', 'golang.org/x/crypto', 'nokogiri', 'symfony/http-kernel']) {
+assert.equal(report.lockfiles.length, 12, 'all twelve lockfile formats are found');
+for (const name of ['lodash', 'axios', 'requests', 'urllib3', 'minimist', 'http', 'serde_yaml', 'golang.org/x/crypto', 'nokogiri', 'symfony/http-kernel', 'pyyaml']) {
   assert.ok(report.findings.some((f) => f.package === name), `finding expected for ${name}`);
 }
 assert.ok(report.upgrades.every((u) => u.target === null || u.target !== u.installed), 'targets differ from installed');
 assert.ok(report.upgrades.find((u) => u.package === 'urllib3').majorJump, 'urllib3 1.x -> 2.x flagged as major');
 
-assert.ok(report.packagesScanned >= 16, 'bun.lock workspace entries are skipped, real packages counted');
+assert.ok(report.packagesScanned >= 17, 'bun.lock workspace entries are skipped, real packages counted');
 
 assert.equal(run(fixtures, '--fail-on=none').status, 0, '--fail-on=none never fails on findings');
 assert.equal(run(fixtures, '--fail-on=bogus').status, 2, 'invalid --fail-on is rejected');
@@ -40,6 +40,13 @@ assert.ok(!ignoredRun.findings.some((f) => f.id === target));
 const md = run(fixtures, '--markdown').stdout;
 assert.match(md, /^## .* am-i-cooked: cooked/);
 assert.match(md, /\| `lodash` \|/);
+
+const unpinnedDir = mkdtempSync(join(tmpdir(), 'aic-'));
+writeFileSync(join(unpinnedDir, 'requirements.txt'), 'django>=5.1,<5.2\nrequests>=2\n');
+const unpinned = run(unpinnedDir);
+assert.equal(unpinned.status, 2, 'unpinned ranges must exit 2, never report safe');
+assert.match(unpinned.stdout, /UNKNOWN/);
+assert.match(unpinned.stdout, /none pins an exact version/);
 
 const empty = run(mkdtempSync(join(tmpdir(), 'aic-')));
 assert.equal(empty.status, 2, 'no lockfile must exit 2, never report safe');
