@@ -15,7 +15,10 @@ Run the bundled scanner from the project root. It needs Node 18+ and no install 
 node <this-skill-dir>/scripts/scan.mjs .          # human report
 node <this-skill-dir>/scripts/scan.mjs . --json   # structured report, see report-schema.json
 node <this-skill-dir>/scripts/scan.mjs . --sarif  # GitHub code scanning format
+node <this-skill-dir>/scripts/scan.mjs . --markdown  # PR comment format
 ```
+
+Findings the user already accepted live in `.cookedignore` (one id per line). Never add to it yourself: only the user decides what risk to accept.
 
 It finds the lockfiles, matches exact installed versions on OSV.dev, enriches each hit with cve.now (CVSS, CISA KEV, exploit signals, fixed versions), and prints a verdict plus an upgrade plan. Exit code: `0` pass, `1` vulnerable (tune with `--fail-on=any|cooked|kev|none`), `2` nothing checked or error.
 

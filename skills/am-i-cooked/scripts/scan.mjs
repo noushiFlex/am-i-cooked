@@ -1,8 +1,8 @@
 #!/usr/bin/env node
 // am-i-cooked scanner: lockfiles -> OSV match -> cve.now enrichment -> verdict.
-// Usage: node scan.mjs [dir] [--json | --sarif] [--fail-on=any|cooked|kev|none]
+// Usage: node scan.mjs [dir] [--json | --sarif | --markdown] [--fail-on=any|cooked|kev|none] [--ignore=ID,ID]
 // Exit code 0 = pass, 1 = failed the --fail-on threshold (default: any finding), 2 = nothing checked or error.
-import { readdirSync, readFileSync } from 'node:fs';
+import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { join, relative } from 'node:path';
 
 const OSV = 'https://api.osv.dev/v1';
@@ -14,6 +14,7 @@ const OSV_LABEL_TO_CVSS = { CRITICAL: 9.5, HIGH: 7.5, MODERATE: 5, MEDIUM: 5, LO
 const args = process.argv.slice(2);
 const asJson = args.includes('--json');
 const asSarif = args.includes('--sarif');
+const asMarkdown = args.includes('--markdown');
 const failOn = args.find((a) => a.startsWith('--fail-on='))?.split('=')[1] ?? 'any';
 const root = args.find((a) => !a.startsWith('--')) ?? '.';
 if (!['any', 'cooked', 'kev', 'none'].includes(failOn)) {
@@ -261,6 +262,14 @@ function upgradePlan(findings) {
   return [...plan.values()].sort((a, b) => b.worstCvss - a.worstCvss);
 }
 
+// Accepted risks: --ignore=ID,ID and/or a .cookedignore file in the scanned root (one id per line, # comments).
+function loadIgnored() {
+  const fromFlag = (args.find((a) => a.startsWith('--ignore='))?.split('=')[1] ?? '').split(',');
+  const file = join(root, '.cookedignore');
+  const fromFile = existsSync(file) ? readFileSync(file, 'utf8').split('\n').map((l) => l.replace(/#.*/, '')) : [];
+  return new Set([...fromFlag, ...fromFile].map((id) => id.trim().toUpperCase()).filter(Boolean));
+}
+
 // ---- main ----
 
 async function main() {
@@ -297,6 +306,11 @@ async function main() {
       });
     }
   }
+  const ignoredIds = loadIgnored();
+  const kept = findings.filter((f) => !ignoredIds.has(f.id.toUpperCase()));
+  const ignored = findings.length - kept.length;
+  findings.length = 0;
+  findings.push(...kept);
   findings.sort((a, b) => (b.cvss ?? 0) - (a.cvss ?? 0));
 
   const report = {
@@ -304,12 +318,14 @@ async function main() {
     scannedAt: new Date().toISOString(),
     lockfiles: lockfiles.map((f) => relative(root, f)),
     packagesScanned: packages.size,
+    ignored,
     upgrades: upgradePlan(findings),
     findings,
   };
 
   if (asJson) console.log(JSON.stringify(report, null, 2));
   else if (asSarif) console.log(JSON.stringify(toSarif(report), null, 2));
+  else if (asMarkdown) console.log(toMarkdown(report));
   else printReport(report);
   process.exitCode = exitCode(report); // not process.exit(): it truncates piped stdout at 64 KB
 }
@@ -323,6 +339,24 @@ function exitCode(r) {
     none: false,
   }[failOn];
   return failed ? 1 : 0;
+}
+
+// Markdown for PR comments and the GitHub job summary.
+function toMarkdown(r) {
+  const icon = { cooked: '🔥', 'a bit cooked': '⚠️', safe: '✅', unknown: '❔' }[r.verdict];
+  const lines = [`## ${icon} am-i-cooked: ${r.verdict}`, '', `${r.packagesScanned} packages, ${r.lockfiles.length} lockfile(s)${r.ignored ? `, ${r.ignored} ignored` : ''}.`];
+  if (r.upgrades.length) {
+    lines.push('', '| Package | Installed | Upgrade to | Worst CVSS | Note |', '| --- | --- | --- | --- | --- |');
+    for (const u of r.upgrades) {
+      const note = [u.majorJump && 'major jump', u.unfixed && `${u.unfixed} without fix`].filter(Boolean).join(', ');
+      lines.push(`| \`${u.package}\` | ${u.installed} | ${u.target ?? 'no fix known'} | ${u.worstCvss || '?'} | ${note} |`);
+    }
+    const urgent = r.findings.filter((f) => f.kev || f.likelyExploited);
+    if (urgent.length) lines.push('', `**Actively exploited or exploit seen:** ${urgent.map((f) => `[${f.id}](https://cve.now/${f.id})`).join(', ')}`);
+  }
+  if (r.verdict === 'safe') lines.push('', 'No known vulnerability matches. This is not proof of safety.');
+  if (r.verdict === 'unknown') lines.push('', 'No supported lockfile found. Nothing was checked.');
+  return lines.join('\n');
 }
 
 // SARIF 2.1.0, for GitHub code scanning (github/codeql-action/upload-sarif).

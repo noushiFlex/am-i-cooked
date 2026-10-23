@@ -73,7 +73,19 @@ Then, in your project: `am i cooked?`
 node skills/am-i-cooked/scripts/scan.mjs .          # human report
 node skills/am-i-cooked/scripts/scan.mjs . --json   # structured, see report-schema.json
 node skills/am-i-cooked/scripts/scan.mjs . --sarif  # GitHub code scanning
+node skills/am-i-cooked/scripts/scan.mjs . --markdown  # PR comment / job summary
 ```
+
+### Accept a risk
+
+Hide a finding you reviewed and accept, with `--ignore=CVE-2020-28500,CVE-2021-23337` or a `.cookedignore` file at the root of the scanned directory:
+
+```text
+# lodash ReDoS, our input is never user-controlled
+CVE-2020-28500
+```
+
+Use the id the report prints. Ignored findings are counted (`ignored` in the JSON) and never counted in the verdict, so write the reason in the comment.
 
 Exit code: `0` pass, `1` failed the threshold, `2` nothing checked or error. Pick the threshold with `--fail-on=`:
 
@@ -140,6 +152,7 @@ A **safe** verdict is not proof of safety. Vulnerabilities without version data 
 - [x] `Cargo.lock`, `go.sum`, `Gemfile.lock`, `composer.lock`, `bun.lock`
 - [x] `--fail-on` for CI
 - [x] SARIF output for GitHub code scanning
+- [x] `.cookedignore` and Markdown report
 
 PRs welcome, see [CONTRIBUTING.md](CONTRIBUTING.md).
 

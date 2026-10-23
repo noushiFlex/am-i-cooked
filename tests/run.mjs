@@ -32,6 +32,15 @@ const goUpgrade = report.upgrades.find((u) => u.package === 'golang.org/x/crypto
 assert.ok(goUpgrade.target, 'Go "v"-prefixed versions still resolve to a fix');
 assert.ok(goUpgrade.majorJump === false || goUpgrade.target.startsWith('0.'), 'Go v0 pseudo-version is not a false major jump');
 
+const target = report.findings[0].id;
+const ignoredRun = JSON.parse(run(fixtures, '--json', `--ignore=${target.toLowerCase()}`).stdout);
+assert.equal(ignoredRun.ignored, 1, '--ignore removes the finding (case-insensitive)');
+assert.ok(!ignoredRun.findings.some((f) => f.id === target));
+
+const md = run(fixtures, '--markdown').stdout;
+assert.match(md, /^## .* am-i-cooked: cooked/);
+assert.match(md, /\| `lodash` \|/);
+
 const empty = run(mkdtempSync(join(tmpdir(), 'aic-')));
 assert.equal(empty.status, 2, 'no lockfile must exit 2, never report safe');
 assert.match(empty.stdout, /UNKNOWN/);
