@@ -23,7 +23,7 @@
 <text class="l fg" x="20" y="254" style="animation-delay:3.50s">&#160;&#160;github.com/apple/swift-nio&#160;&#160;2.0.0&#160;-&gt;&#160;2.100.0</text>
 <text class="l fg" x="20" y="276" style="animation-delay:3.85s">&#160;&#160;urllib3&#160;&#160;1.25.0&#160;-&gt;&#160;2.8.0&#160;&#160;<tspan class="warn">(MAJOR&#160;jump,&#160;check&#160;changelog;&#160;safer:&#160;1.26.19&#160;clears…</tspan></text>
 <text class="l fg" x="20" y="298" style="animation-delay:4.20s">&#160;&#160;axios&#160;&#160;0.21.1&#160;-&gt;&#160;0.33.0</text>
-<text class="l fg" x="20" y="320" style="animation-delay:4.55s">&#160;&#160;lodash&#160;&#160;4.17.20&#160;-&gt;&#160;4.18.0&#160;&#160;(transitive:&#160;upgrade&#160;the&#160;parent&#160;first)</text>
+<text class="l fg" x="20" y="320" style="animation-delay:4.55s">&#160;&#160;lodash&#160;&#160;4.17.20&#160;-&gt;&#160;4.18.0</text>
 <text class="l fg" x="20" y="342" style="animation-delay:4.90s">&#160;&#160;symfony/http-kernel&#160;&#160;4.4.0&#160;-&gt;&#160;4.4.50</text>
 <text class="l fg" x="20" y="364" style="animation-delay:5.25s">&#160;&#160;Newtonsoft.Json&#160;&#160;9.0.1&#160;-&gt;&#160;13.0.1&#160;&#160;<tspan class="warn">(MAJOR&#160;jump,&#160;check&#160;changelog)</tspan></text>
 <text class="l fg" x="20" y="386" style="animation-delay:5.60s">&#160;&#160;idna&#160;&#160;3.7&#160;-&gt;&#160;3.15</text>

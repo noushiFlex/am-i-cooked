@@ -10,7 +10,7 @@ Upgrade plan (one version clears every finding for that package):
   github.com/apple/swift-nio  2.0.0 -> 2.100.0
   urllib3  1.25.0 -> 2.8.0  (MAJOR jump, check changelog; safer: 1.26.19 clears 4, 6 still need the major)
   axios  0.21.1 -> 0.33.0
-  lodash  4.17.20 -> 4.18.0  (transitive: upgrade the parent first)
+  lodash  4.17.20 -> 4.18.0
   symfony/http-kernel  4.4.0 -> 4.4.50
   Newtonsoft.Json  9.0.1 -> 13.0.1  (MAJOR jump, check changelog)
   idna  3.7 -> 3.15
