@@ -386,11 +386,16 @@ const comparisonLine = (c) =>
 async function main() {
   const lockfiles = findLockfiles(root);
   const packages = new Map();
+  const errors = []; // lockfiles that could not be read: reported, never silently skipped
   for (const file of lockfiles) {
     const { ecosystem, parse } = lockfileFor(file.split('/').pop());
-    for (const p of parse(readFileSync(file, 'utf8'))) {
-      const key = `${ecosystem}:${p.name}@${p.version}`;
-      if (!packages.has(key)) packages.set(key, { ...p, ecosystem, key, lockfile: relative(root, file) });
+    try {
+      for (const p of parse(readFileSync(file, 'utf8'))) {
+        const key = `${ecosystem}:${p.name}@${p.version}`;
+        if (!packages.has(key)) packages.set(key, { ...p, ecosystem, key, lockfile: relative(root, file) });
+      }
+    } catch (err) {
+      errors.push({ lockfile: relative(root, file), message: `could not parse: ${err.message}` });
     }
   }
 
@@ -431,6 +436,7 @@ async function main() {
     scannedAt: new Date().toISOString(),
     lockfiles: lockfiles.map((f) => relative(root, f)),
     packagesScanned: packages.size,
+    errors,
     ignored,
     summary: {
       riskScore: riskScore(findings),
@@ -478,6 +484,7 @@ function toMarkdown(r) {
     if (urgent.length) lines.push('', `**Known exploited:** ${urgent.map((f) => `[${f.id}](${f.advisory})`).join(', ')}`);
   }
   if (r.verdict === 'safe') lines.push('', 'No known vulnerability matches. This is not proof of safety.');
+  for (const e of r.errors) lines.push('', `⚠️ \`${e.lockfile}\`: ${e.message}`);
   if (r.verdict === 'unknown') lines.push('', 'Nothing was checked: no supported lockfile, or no exact pinned versions (ranges like `>=1.0` cannot be matched).');
   return lines.join('\n');
 }
@@ -506,6 +513,7 @@ function printReport(r) {
   console.log(`Verdict: ${r.verdict.toUpperCase()}  (${r.packagesScanned} packages, ${r.lockfiles.length} lockfile(s))`);
   if (r.findings.length) console.log(`Risk score: ${r.summary.riskScore}/100  (${r.summary.knownExploited} known exploited, ${r.summary.theoretical} theoretical)`);
   if (r.comparison) console.log(comparisonLine(r.comparison));
+  for (const e of r.errors) console.log(`WARNING ${e.lockfile}: ${e.message}`);
   if (!r.lockfiles.length) console.log('No supported lockfile found. Nothing was checked.');
   else if (!r.packagesScanned) console.log('Dependency files found, but none pins an exact version (ranges like ">=1.0" cannot be matched). Nothing was checked.\nPin versions first (uv lock, pip freeze > requirements.txt, poetry lock) and re-run.');
   if (r.upgrades.length) {

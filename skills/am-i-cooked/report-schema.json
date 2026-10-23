@@ -9,6 +9,11 @@
     "scannedAt": { "type": "string", "format": "date-time" },
     "lockfiles": { "type": "array", "items": { "type": "string" } },
     "packagesScanned": { "type": "integer", "minimum": 0 },
+    "errors": {
+      "type": "array",
+      "description": "Lockfiles that could not be parsed. Reported, never silently skipped.",
+      "items": { "type": "object", "properties": { "lockfile": { "type": "string" }, "message": { "type": "string" } } }
+    },
     "ignored": { "type": "integer", "minimum": 0, "description": "Findings hidden by --ignore or .cookedignore." },
     "summary": {
       "type": "object",

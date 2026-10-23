@@ -8,6 +8,7 @@
   "engines": { "node": ">=18" },
   "scripts": {
     "scan": "node skills/am-i-cooked/scripts/scan.mjs .",
-    "test": "node tests/run.mjs"
+    "test": "node tests/unit.mjs && node tests/run.mjs",
+    "test:unit": "node tests/unit.mjs"
   }
 }
