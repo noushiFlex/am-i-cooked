@@ -1,6 +1,6 @@
 // Integration test: scans the vulnerable lockfiles in tests/fixtures (needs network).
 import { spawnSync } from 'node:child_process';
-import { mkdtempSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import assert from 'node:assert/strict';
@@ -80,5 +80,18 @@ assert.match(dead.stderr, /cannot reach 127\.0\.0\.1:9.*--offline/);
 const empty = run(mkdtempSync(join(tmpdir(), 'aic-')));
 assert.equal(empty.status, 2, 'no lockfile must exit 2, never report safe');
 assert.match(empty.stdout, /UNKNOWN/);
+
+// Skill package: valid frontmatter, and every relative link in the skill markdown points at a real file.
+const skillDir = new URL('../skills/am-i-cooked/', import.meta.url).pathname;
+const skillMd = readFileSync(join(skillDir, 'SKILL.md'), 'utf8');
+const front = skillMd.match(/^---\nname: (.+)\ndescription: (.+)\n---\n/);
+assert.ok(front, 'SKILL.md starts with name + description frontmatter');
+assert.equal(front[1], 'am-i-cooked');
+assert.ok(front[2].length <= 1024, 'description fits the 1024 character limit');
+for (const file of ['SKILL.md', 'FIXING.md', 'SOURCES.md']) {
+  for (const [, link] of readFileSync(join(skillDir, file), 'utf8').matchAll(/\]\(([^)#:]+\.(?:md|json))\)/g)) {
+    assert.ok(existsSync(join(skillDir, link)), `${file} links to missing ${link}`);
+  }
+}
 
 console.log('ok');
