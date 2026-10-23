@@ -89,6 +89,17 @@ Answers from OSV.dev and cve.now are cached for 6 hours in `~/.cache/am-i-cooked
 - `--offline` answers from the cache only and never touches the network. It needs one earlier online scan of the same lockfiles, and it fails loudly (exit 2) on a cache miss instead of guessing.
 - `--no-cache` forces fresh answers.
 
+### Verify a fix
+
+Save a report before fixing, then compare after:
+
+```bash
+node skills/am-i-cooked/scripts/scan.mjs . --json > before.json
+# ... upgrade ...
+node skills/am-i-cooked/scripts/scan.mjs . --baseline=before.json
+# Since baseline: cooked -> safe. 12 fixed, 0 remaining, 0 new.
+```
+
 ### Accept a risk
 
 Hide a finding you reviewed and accept, with `--ignore=CVE-2020-28500,CVE-2021-23337` or a `.cookedignore` file at the root of the scanned directory:

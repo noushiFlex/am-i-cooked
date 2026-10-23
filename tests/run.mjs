@@ -43,6 +43,15 @@ const ignoredRun = JSON.parse(run(fixtures, '--json', `--ignore=${target.toLower
 assert.equal(ignoredRun.ignored, 1, '--ignore removes the finding (case-insensitive)');
 assert.ok(!ignoredRun.findings.some((f) => f.id === target));
 
+const baselineFile = join(mkdtempSync(join(tmpdir(), 'aic-')), 'before.json');
+writeFileSync(baselineFile, JSON.stringify(report));
+const afterFix = JSON.parse(run(fixtures, '--json', `--ignore=${target}`, `--baseline=${baselineFile}`).stdout).comparison;
+assert.equal(afterFix.fixed.length, 1, 'baseline: the removed finding is reported as fixed');
+assert.equal(afterFix.fixed[0].id, target);
+assert.equal(afterFix.remaining, report.findings.length - 1);
+assert.equal(afterFix.introduced.length, 0);
+assert.equal(run(fixtures, `--baseline=/nonexistent.json`).status, 2, 'unreadable baseline exits 2');
+
 const md = run(fixtures, '--markdown').stdout;
 assert.match(md, /^## .* am-i-cooked: cooked/);
 assert.match(md, /\| `lodash` \|/);

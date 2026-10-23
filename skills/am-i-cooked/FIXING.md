@@ -34,7 +34,15 @@ Only after the user agreed to fix. The scanner's `upgrades` list gives one targe
 
 ## After
 
-1. Re-run the scanner and show the new verdict next to the old one.
+1. Re-scan against the pre-fix report and show the verdict change:
+
+   ```bash
+   node <this-skill-dir>/scripts/scan.mjs . --json > /tmp/before.json   # before touching anything
+   # ... upgrades ...
+   node <this-skill-dir>/scripts/scan.mjs . --baseline=/tmp/before.json
+   ```
+
+   The output says how many findings were fixed, how many remain and whether any are new. Never claim a fix without this re-scan.
 2. List: fixed, left (with the reason), needs a human.
 3. Do not push, open a PR or publish. Ask first.
 

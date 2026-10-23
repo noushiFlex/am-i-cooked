@@ -20,6 +20,18 @@
         "theoretical": { "type": "integer", "description": "No known exploitation. Not a reachability analysis." }
       }
     },
+    "comparison": {
+      "type": ["object", "null"],
+      "description": "Present when --baseline=FILE is given, null otherwise.",
+      "properties": {
+        "baseline": { "type": "string" },
+        "verdictBefore": { "type": "string" },
+        "verdictAfter": { "type": "string" },
+        "fixed": { "type": "array", "items": { "type": "object", "properties": { "id": { "type": "string" }, "package": { "type": "string" } } } },
+        "remaining": { "type": "integer" },
+        "introduced": { "type": "array", "items": { "type": "object", "properties": { "id": { "type": "string" }, "package": { "type": "string" } } } }
+      }
+    },
     "upgrades": {
       "type": "array",
       "items": {

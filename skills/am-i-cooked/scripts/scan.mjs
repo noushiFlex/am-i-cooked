@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // am-i-cooked scanner: lockfiles -> OSV match -> cve.now enrichment -> verdict.
 // Usage: node scan.mjs [dir] [--json | --sarif | --markdown] [--fail-on=any|cooked|kev|none] [--ignore=ID,ID]
-//                       [--offline] [--no-cache]
+//                       [--offline] [--no-cache] [--baseline=earlier-report.json]
 // Exit code 0 = pass, 1 = failed the --fail-on threshold (default: any finding), 2 = nothing checked or error.
 import { createHash } from 'node:crypto';
 import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
@@ -353,6 +353,34 @@ function loadIgnored() {
   return new Set([...fromFlag, ...fromFile].map((id) => id.trim().toUpperCase()).filter(Boolean));
 }
 
+// Post-fix verification: compare against an earlier --json report. A finding is the same if id and package match
+// (the installed version changes when you upgrade).
+function compareToBaseline(report) {
+  const file = args.find((a) => a.startsWith('--baseline='))?.split('=')[1];
+  if (!file) return null;
+  let before;
+  try {
+    before = JSON.parse(readFileSync(file, 'utf8'));
+    if (!Array.isArray(before.findings)) throw new Error('no findings array');
+  } catch (err) {
+    throw new Error(`--baseline: cannot read ${file} as an am-i-cooked --json report (${err.message})`);
+  }
+  const key = (f) => `${f.id}|${f.package}`;
+  const now = new Set(report.findings.map(key));
+  const was = new Set(before.findings.map(key));
+  return {
+    baseline: file,
+    verdictBefore: before.verdict,
+    verdictAfter: report.verdict,
+    fixed: before.findings.filter((f) => !now.has(key(f))).map((f) => ({ id: f.id, package: f.package })),
+    remaining: report.findings.filter((f) => was.has(key(f))).length,
+    introduced: report.findings.filter((f) => !was.has(key(f))).map((f) => ({ id: f.id, package: f.package })),
+  };
+}
+
+const comparisonLine = (c) =>
+  `Since baseline: ${c.verdictBefore} -> ${c.verdictAfter}. ${c.fixed.length} fixed, ${c.remaining} remaining, ${c.introduced.length} new.`;
+
 // ---- main ----
 
 async function main() {
@@ -414,6 +442,8 @@ async function main() {
     findings,
   };
 
+  report.comparison = compareToBaseline(report);
+
   if (asJson) console.log(JSON.stringify(report, null, 2));
   else if (asSarif) console.log(JSON.stringify(toSarif(report), null, 2));
   else if (asMarkdown) console.log(toMarkdown(report));
@@ -436,6 +466,7 @@ function exitCode(r) {
 function toMarkdown(r) {
   const icon = { cooked: '🔥', 'a bit cooked': '⚠️', safe: '✅', unknown: '❔' }[r.verdict];
   const lines = [`## ${icon} am-i-cooked: ${r.verdict}`, '', `${r.packagesScanned} packages, ${r.lockfiles.length} lockfile(s)${r.ignored ? `, ${r.ignored} ignored` : ''}.`];
+  if (r.comparison) lines.push('', `**${comparisonLine(r.comparison)}**`);
   if (r.findings.length) lines.push('', `**Risk score ${r.summary.riskScore}/100**: ${r.summary.knownExploited} known exploited, ${r.summary.theoretical} theoretical.`);
   if (r.upgrades.length) {
     lines.push('', '| Package | Installed | Upgrade to | Worst CVSS | Note |', '| --- | --- | --- | --- | --- |');
@@ -474,6 +505,7 @@ function toSarif(r) {
 function printReport(r) {
   console.log(`Verdict: ${r.verdict.toUpperCase()}  (${r.packagesScanned} packages, ${r.lockfiles.length} lockfile(s))`);
   if (r.findings.length) console.log(`Risk score: ${r.summary.riskScore}/100  (${r.summary.knownExploited} known exploited, ${r.summary.theoretical} theoretical)`);
+  if (r.comparison) console.log(comparisonLine(r.comparison));
   if (!r.lockfiles.length) console.log('No supported lockfile found. Nothing was checked.');
   else if (!r.packagesScanned) console.log('Dependency files found, but none pins an exact version (ranges like ">=1.0" cannot be matched). Nothing was checked.\nPin versions first (uv lock, pip freeze > requirements.txt, poetry lock) and re-run.');
   if (r.upgrades.length) {
