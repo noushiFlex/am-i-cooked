@@ -135,6 +135,31 @@ try {
   assert.equal(JSON.parse(broken.stdout).verdict, 'unknown');
   assert.equal(JSON.parse(broken.stdout).errors.length, 1);
 
+  // direct vs transitive, git dependencies reported instead of ignored, --strict
+  const gitDir = mkdtempSync(join(tmpdir(), 'aic-unit-git-'));
+  const reg = (n) => ({ version: '1.0.0', resolved: `https://registry.npmjs.org/${n}/-/${n}-1.0.0.tgz` });
+  writeFileSync(join(gitDir, 'package-lock.json'), JSON.stringify({
+    lockfileVersion: 3,
+    packages: {
+      '': { dependencies: { a: '^1' } },
+      'node_modules/a': reg('a'),
+      'node_modules/b': reg('b'),
+      'node_modules/g': { version: '1.0.0', resolved: 'git+ssh://git@github.com/x/g.git' },
+      'node_modules/w': { resolved: 'packages/w', link: true },
+    },
+  }));
+  const tagged = JSON.parse((await run(gitDir, '--json')).stdout);
+  const tag = Object.fromEntries(tagged.findings.map((f) => [f.package, f]));
+  assert.equal(tag.a.direct, true, 'package listed in the root manifest is direct');
+  assert.equal(tag.b.direct, false, 'other packages are transitive');
+  assert.equal(tagged.packagesScanned, 2, 'git dependency and workspace link are not matched against advisories');
+  assert.deepEqual(tagged.skipped.map((d) => [d.name, d.reason]), [['g', 'git']], 'git dependency is reported, workspace link is not a gap');
+  const quiet = ['--ignore=CVE-2026-0001,CVE-2026-0002'];
+  const lenient = await run(gitDir, ...quiet);
+  assert.equal(lenient.status, 0);
+  assert.match(lenient.stdout, /WARNING 1 dependency not checked/);
+  assert.equal((await run(gitDir, ...quiet, '--strict')).status, 2, '--strict: unchecked dependencies are not a pass');
+
   console.log('unit ok');
 } finally {
   server.close();

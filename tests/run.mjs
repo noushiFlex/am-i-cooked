@@ -38,6 +38,14 @@ assert.ok(report.findings.every((f) => f.advisory.startsWith('https://cve.now/')
 const urllib = report.upgrades.find((u) => u.package === 'urllib3');
 assert.ok(urllib.majorJump && urllib.residualAfterSafe >= 0 && 'safeTarget' in urllib, 'major jumps expose a safer in-major alternative');
 
+const direct = (name) => report.findings.find((f) => f.package === name)?.direct;
+assert.equal(direct('http'), true, 'pubspec.lock: "direct main" is direct');
+assert.equal(direct('nokogiri'), true, 'Gemfile.lock: listed under DEPENDENCIES is direct');
+assert.equal(direct('serde_yaml'), null, 'Cargo.lock does not say, so null');
+assert.ok(report.skipped.some((d) => d.name === 'mygem' && d.reason === 'git'), 'Gemfile.lock GIT gems are reported, not matched');
+assert.ok(!report.findings.some((f) => f.package === 'mygem'), 'GIT gem is not matched against a public advisory');
+assert.equal(report.errors.length, 0);
+
 const target = report.findings[0].id;
 const ignoredRun = JSON.parse(run(fixtures, '--json', `--ignore=${target.toLowerCase()}`).stdout);
 assert.equal(ignoredRun.ignored, 1, '--ignore removes the finding (case-insensitive)');

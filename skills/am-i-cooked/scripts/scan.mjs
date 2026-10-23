@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // am-i-cooked scanner: lockfiles -> OSV match -> cve.now enrichment -> verdict.
 // Usage: node scan.mjs [dir] [--json | --sarif | --markdown] [--fail-on=any|cooked|kev|none] [--ignore=ID,ID]
-//                       [--offline] [--no-cache] [--baseline=earlier-report.json]
+//                       [--offline] [--no-cache] [--baseline=earlier-report.json] [--strict]
 // Exit code 0 = pass, 1 = failed the --fail-on threshold (default: any finding), 2 = nothing checked or error.
 import { createHash } from 'node:crypto';
 import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
@@ -23,6 +23,7 @@ const asSarif = args.includes('--sarif');
 const asMarkdown = args.includes('--markdown');
 const offline = args.includes('--offline'); // answer from the local cache only, never touch the network
 const useCache = !args.includes('--no-cache');
+const strict = args.includes('--strict'); // fail (exit 2) when anything could not be checked
 const failOn = args.find((a) => a.startsWith('--fail-on='))?.split('=')[1] ?? 'any';
 const root = args.find((a) => !a.startsWith('--')) ?? '.';
 if (!['any', 'cooked', 'kev', 'none'].includes(failOn)) {
@@ -32,11 +33,20 @@ if (!['any', 'cooked', 'kev', 'none'].includes(failOn)) {
 
 // ---- lockfile parsers: text -> [{ name, version }] ----
 
+// Parsers return { name, version, direct? } (direct: true/false when the lockfile says, undefined when it does not)
+// or { skip: reason } for dependencies that are not published packages (git, file, url): those are reported, not guessed.
 function parseNpmLock(text) {
   const lock = JSON.parse(text);
+  const root = lock.packages?.[''] ?? {};
+  const directNames = new Set(['dependencies', 'devDependencies', 'optionalDependencies', 'peerDependencies'].flatMap((k) => Object.keys(root[k] ?? {})));
   return Object.entries(lock.packages ?? {})
-    .filter(([path, pkg]) => path && pkg.version && !pkg.link)
-    .map(([path, pkg]) => ({ name: pkg.name ?? path.split('node_modules/').pop(), version: pkg.version }));
+    .filter(([path, pkg]) => path && !pkg.link) // workspace links are local code
+    .map(([path, pkg]) => {
+      const name = pkg.name ?? path.split('node_modules/').pop();
+      if (pkg.resolved && !/^https?:\/\//.test(pkg.resolved)) return { skip: pkg.resolved.startsWith('file:') ? 'file' : 'git', name, version: pkg.version };
+      return pkg.version ? { name, version: pkg.version, direct: path === `node_modules/${name}` && directNames.has(name) } : null;
+    })
+    .filter(Boolean);
 }
 
 function parsePnpm(text) {
@@ -85,26 +95,33 @@ function parsePoetry(text) {
 
 function parsePubspec(text) {
   const out = [];
-  let name = null;
+  let cur = null;
   for (const line of text.split('\n')) {
     const head = line.match(/^ {2}([A-Za-z0-9_]+):\s*$/);
-    if (head) name = head[1];
+    if (head) out.push((cur = { name: head[1] }));
+    const dep = line.match(/^ {4}dependency:\s*"?([^"\n]+?)"?\s*$/);
+    if (dep && cur) cur.direct = dep[1].startsWith('direct');
+    const source = line.match(/^ {4}source:\s*(\S+)/);
+    if (source && cur) cur.source = source[1];
     const ver = line.match(/^ {4}version:\s*"?([^"\s]+)"?/);
-    if (ver && name) out.push({ name, version: ver[1] });
+    if (ver && cur) cur.version = ver[1];
   }
-  return out;
+  return out
+    .filter((p) => p.version && p.source !== 'sdk' && p.source !== 'path') // SDK and local packages are not advisories material
+    .map(({ source, ...p }) => (source && source !== 'hosted' ? { skip: 'git', name: p.name, version: p.version } : p));
 }
 
 function parseCargo(text) {
   return text
     .split('[[package]]')
     .slice(1)
-    .filter((block) => /^source = /m.test(block)) // no source = local workspace crate
     .map((block) => ({
       name: block.match(/^name = "([^"]+)"/m)?.[1],
       version: block.match(/^version = "([^"]+)"/m)?.[1],
+      source: block.match(/^source = "([^"]+)"/m)?.[1],
     }))
-    .filter((p) => p.name && p.version);
+    .filter((p) => p.name && p.version && p.source) // no source = local workspace crate
+    .map(({ source, ...p }) => (source.startsWith('git+') ? { skip: 'git', ...p } : p));
 }
 
 function parseGoSum(text) {
@@ -116,11 +133,21 @@ function parseGoSum(text) {
 }
 
 function parseGemfile(text) {
-  return text
-    .split('\n')
-    .map((line) => line.match(/^ {4}([A-Za-z0-9_.-]+) \((\d[\w.]*)(?:-[^)]*)?\)$/))
-    .filter(Boolean)
-    .map((m) => ({ name: m[1], version: m[2] }));
+  const out = [];
+  const direct = new Set();
+  let section = '';
+  for (const line of text.split('\n')) {
+    if (/^[A-Z]+$/.test(line)) section = line;
+    if (section === 'DEPENDENCIES') {
+      const dep = line.match(/^ {2}([A-Za-z0-9_.-]+)/);
+      if (dep) direct.add(dep[1]);
+    }
+    const spec = line.match(/^ {4}([A-Za-z0-9_.-]+) \((\d[\w.]*)(?:-[^)]*)?\)$/);
+    if (!spec) continue;
+    if (section === 'GEM') out.push({ name: spec[1], version: spec[2] });
+    else if (section === 'GIT') out.push({ skip: 'git', name: spec[1], version: spec[2] }); // PATH gems are local code
+  }
+  return out.map((p) => (p.skip ? p : { ...p, direct: direct.has(p.name) }));
 }
 
 function parseComposer(text) {
@@ -152,7 +179,7 @@ function parseNuget(text) {
   return Object.values(lock.dependencies ?? {}).flatMap((framework) =>
     Object.entries(framework)
       .filter(([, dep]) => dep.resolved && dep.type !== 'Project')
-      .map(([name, dep]) => ({ name, version: dep.resolved })));
+      .map(([name, dep]) => ({ name, version: dep.resolved, direct: dep.type === 'Direct' })));
 }
 
 function parseMix(text) {
@@ -378,7 +405,7 @@ function upgradePlan(findings) {
   const plan = new Map();
   for (const f of findings) {
     const key = `${f.ecosystem}:${f.package}@${f.installed}`;
-    const row = plan.get(key) ?? { ecosystem: f.ecosystem, package: f.package, installed: f.installed, target: null, safeTarget: null, fixes: 0, unfixed: 0, residualAfterSafe: 0, worstCvss: 0 };
+    const row = plan.get(key) ?? { ecosystem: f.ecosystem, package: f.package, installed: f.installed, target: null, safeTarget: null, fixes: 0, unfixed: 0, residualAfterSafe: 0, worstCvss: 0, direct: f.direct };
     const higher = (a, b) => (!a || compareVersions(b, a) > 0 ? b : a);
     if (f.fixedIn) {
       row.fixes++;
@@ -438,12 +465,19 @@ async function main() {
   const lockfiles = findLockfiles(root);
   const packages = new Map();
   const errors = []; // lockfiles that could not be read: reported, never silently skipped
+  const skipped = new Map(); // git/file dependencies: not checked, reported
   for (const file of lockfiles) {
     const { ecosystem, parse } = lockfileFor(file.split('/').pop());
     try {
       for (const p of parse(readFileSync(file, 'utf8'))) {
         const key = `${ecosystem}:${p.name}@${p.version}`;
-        if (!packages.has(key)) packages.set(key, { ...p, ecosystem, key, lockfile: relative(root, file) });
+        if (p.skip) {
+          skipped.set(key, { name: p.name, version: p.version, ecosystem, lockfile: relative(root, file), reason: p.skip });
+          continue;
+        }
+        const known = packages.get(key);
+        if (known) known.direct = known.direct || p.direct;
+        else packages.set(key, { ...p, ecosystem, key, lockfile: relative(root, file) });
       }
     } catch (err) {
       errors.push({ lockfile: relative(root, file), message: `could not parse: ${err.message}` });
@@ -470,6 +504,7 @@ async function main() {
         id: d.id, title: d.title, ecosystem: pkg.ecosystem, package: pkg.name, installed: pkg.version,
         fixedIn: smallestFix(d, pkg), cvss: d.cvss, kev: d.kev, likelyExploited: d.likelyExploited,
         lockfile: pkg.lockfile, source: d.source,
+        direct: pkg.direct ?? null,
         knownExploited: d.kev || d.likelyExploited,
         advisory: `https://cve.now/${d.id}`, osvId, osv: `https://osv.dev/vulnerability/${osvId}`,
       });
@@ -488,6 +523,7 @@ async function main() {
     lockfiles: lockfiles.map((f) => relative(root, f)),
     packagesScanned: packages.size,
     errors,
+    skipped: [...skipped.values()],
     ignored,
     summary: {
       riskScore: riskScore(findings),
@@ -516,7 +552,8 @@ function exitCode(r) {
     kev: r.findings.some((f) => f.kev),
     none: false,
   }[failOn];
-  return failed ? 1 : 0;
+  if (failed) return 1;
+  return strict && (r.errors.length || r.skipped.length) ? 2 : 0; // strict: an incomplete check is not a pass
 }
 
 // Markdown for PR comments and the GitHub job summary.
@@ -536,6 +573,7 @@ function toMarkdown(r) {
   }
   if (r.verdict === 'safe') lines.push('', 'No known vulnerability matches. This is not proof of safety.');
   for (const e of r.errors) lines.push('', `⚠️ \`${e.lockfile}\`: ${e.message}`);
+  if (r.skipped.length) lines.push('', `⚠️ ${r.skipped.length} git/file dependenc${r.skipped.length === 1 ? 'y was' : 'ies were'} not checked: ${r.skipped.slice(0, 5).map((d) => `\`${d.name}\``).join(', ')}.`);
   if (r.verdict === 'unknown') lines.push('', 'Nothing was checked: no supported lockfile, or no exact pinned versions (ranges like `>=1.0` cannot be matched).');
   return lines.join('\n');
 }
@@ -565,13 +603,14 @@ function printReport(r) {
   if (r.findings.length) console.log(`Risk score: ${r.summary.riskScore}/100  (${r.summary.knownExploited} known exploited, ${r.summary.theoretical} theoretical)`);
   if (r.comparison) console.log(comparisonLine(r.comparison));
   for (const e of r.errors) console.log(`WARNING ${e.lockfile}: ${e.message}`);
+  if (r.skipped.length) console.log(`WARNING ${r.skipped.length} dependenc${r.skipped.length === 1 ? 'y' : 'ies'} not checked (git/file, not a published version): ${r.skipped.slice(0, 5).map((d) => d.name).join(', ')}${r.skipped.length > 5 ? ', ...' : ''}${strict ? '' : '. Use --strict to fail on this.'}`);
   if (!r.lockfiles.length) console.log('No supported lockfile found. Nothing was checked.');
   else if (!r.packagesScanned) console.log('Dependency files found, but none pins an exact version (ranges like ">=1.0" cannot be matched). Nothing was checked.\nPin versions first (uv lock, pip freeze > requirements.txt, poetry lock) and re-run.');
   if (r.upgrades.length) {
     console.log('\nUpgrade plan (one version clears every finding for that package):');
     for (const u of r.upgrades) {
       const safer = u.majorJump && u.safeTarget ? `safer: ${u.safeTarget} clears ${u.fixes + u.unfixed - u.residualAfterSafe}, ${u.residualAfterSafe} still need the major` : null;
-      const notes = [u.majorJump && 'MAJOR jump, check changelog', safer, u.unfixed && `${u.unfixed} finding(s) have no known fix`].filter(Boolean);
+      const notes = [u.direct === false && 'transitive: upgrade the parent first', u.majorJump && 'MAJOR jump, check changelog', safer, u.unfixed && `${u.unfixed} finding(s) have no known fix`].filter(Boolean);
       console.log(`  ${u.package}  ${u.installed} -> ${u.target ?? 'no fix known'}${notes.length ? `  (${notes.join('; ')})` : ''}`);
     }
   }
@@ -579,7 +618,7 @@ function printReport(r) {
   for (const f of shown) {
     const flags = [f.kev && 'KEV', f.likelyExploited && 'exploit seen'].filter(Boolean).join(', ');
     console.log(`\n${f.id}  CVSS ${f.cvss ?? '?'}${flags ? `  [${flags}]` : ''}`);
-    console.log(`  ${f.package}@${f.installed} -> ${f.fixedIn ?? 'no fix known'}  (${f.lockfile})`);
+    console.log(`  ${f.package}@${f.installed} -> ${f.fixedIn ?? 'no fix known'}  (${f.lockfile})${f.direct === true ? ' [direct]' : f.direct === false ? ' [transitive]' : ''}`);
     console.log(`  ${String(f.title).slice(0, 110)}`);
     console.log(`  ${f.advisory}`);
   }

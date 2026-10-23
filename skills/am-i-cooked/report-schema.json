@@ -3,7 +3,7 @@
   "title": "am-i-cooked report",
   "description": "Output of `scan.mjs --json`.",
   "type": "object",
-  "required": ["verdict", "scannedAt", "lockfiles", "packagesScanned", "summary", "upgrades", "findings"],
+  "required": ["verdict", "scannedAt", "lockfiles", "packagesScanned", "errors", "skipped", "summary", "upgrades", "findings"],
   "properties": {
     "verdict": { "enum": ["safe", "a bit cooked", "cooked", "unknown"] },
     "scannedAt": { "type": "string", "format": "date-time" },
@@ -13,6 +13,11 @@
       "type": "array",
       "description": "Lockfiles that could not be parsed. Reported, never silently skipped.",
       "items": { "type": "object", "properties": { "lockfile": { "type": "string" }, "message": { "type": "string" } } }
+    },
+    "skipped": {
+      "type": "array",
+      "description": "Dependencies that are not published package versions (git, file) and were therefore not checked.",
+      "items": { "type": "object", "properties": { "name": { "type": "string" }, "version": { "type": "string" }, "ecosystem": { "type": "string" }, "lockfile": { "type": "string" }, "reason": { "enum": ["git", "file"] } } }
     },
     "ignored": { "type": "integer", "minimum": 0, "description": "Findings hidden by --ignore or .cookedignore." },
     "summary": {
@@ -52,6 +57,7 @@
           "fixes": { "type": "integer", "description": "Findings cleared by the target." },
           "unfixed": { "type": "integer", "description": "Findings with no known fix." },
           "worstCvss": { "type": "number" },
+          "direct": { "type": ["boolean", "null"], "description": "true if the project depends on it directly, false if transitive, null if the lockfile does not say." },
           "majorJump": { "type": "boolean" }
         }
       }
@@ -71,6 +77,7 @@
           "cvss": { "type": ["number", "null"] },
           "kev": { "type": "boolean", "description": "Listed in the CISA Known Exploited Vulnerabilities catalog." },
           "likelyExploited": { "type": "boolean", "description": "EPSS threshold reached or a public exploit exists." },
+          "direct": { "type": ["boolean", "null"], "description": "Known for package-lock.json, pubspec.lock, Gemfile.lock and packages.lock.json only." },
           "knownExploited": { "type": "boolean", "description": "kev or likelyExploited." },
           "advisory": { "type": "string", "format": "uri" },
           "osvId": { "type": "string" },

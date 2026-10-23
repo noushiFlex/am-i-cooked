@@ -82,6 +82,12 @@ node skills/am-i-cooked/scripts/scan.mjs . --sarif  # GitHub code scanning
 node skills/am-i-cooked/scripts/scan.mjs . --markdown  # PR comment / job summary
 ```
 
+### Strict mode
+
+By default, dependencies that are not published versions (git, file URLs) are listed as a warning and the scan goes on. `--strict` turns an incomplete check into a failure: exit code `2` when any lockfile could not be parsed or any dependency was not checked. Findings that fail `--fail-on` still exit `1`.
+
+Each finding is tagged `[direct]` or `[transitive]` when the lockfile says so (`package-lock.json`, `pubspec.lock`, `Gemfile.lock`, `packages.lock.json`). Transitive rows in the upgrade plan tell you to upgrade the parent first.
+
 ### Cache and offline
 
 Answers from OSV.dev and cve.now are cached for 6 hours in `~/.cache/am-i-cooked` (override with `AM_I_COOKED_CACHE`). Requests retry with backoff on rate limits and server errors, and fall back to stale cache if the network is down.

@@ -45,6 +45,7 @@ Follow [FIXING.md](FIXING.md). In short: new branch, safe upgrades first, tests 
 Facts come from the scanner, never from memory.
 
 - Never state a CVE id, CVSS score, fixed version or package version that is not in the scanner output. If asked about something the scan did not return, say the scan does not cover it.
+- If the report lists `skipped` dependencies (git/file) or `errors`, say they were not checked. Do not call the project fully verified.
 - Never say "safe" when the verdict is `unknown`, when a scan failed, or when you have not re-scanned after a change.
 - After any dependency change, re-scan. A fix is only confirmed by `--baseline` showing the finding under "fixed".
 - Unpinned ranges (`django>=5.1`) cannot be matched. Say so, and ask to pin (`uv lock`, `pip freeze`) or scan the installed environment. Do not guess versions.

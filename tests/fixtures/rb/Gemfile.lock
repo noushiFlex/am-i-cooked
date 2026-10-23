@@ -1,3 +1,9 @@
+GIT
+  remote: https://github.com/x/mygem.git
+  revision: abc123
+  specs:
+    mygem (0.1.0)
+
 GEM
   remote: https://rubygems.org/
   specs:
@@ -7,3 +13,7 @@ GEM
 
 PLATFORMS
   ruby
+
+DEPENDENCIES
+  mygem!
+  nokogiri
