@@ -14,9 +14,10 @@ Run the bundled scanner from the project root. It needs Node 18+ and no install 
 ```bash
 node <this-skill-dir>/scripts/scan.mjs .          # human report
 node <this-skill-dir>/scripts/scan.mjs . --json   # structured report, see report-schema.json
+node <this-skill-dir>/scripts/scan.mjs . --sarif  # GitHub code scanning format
 ```
 
-It finds the lockfiles, matches exact installed versions on OSV.dev, enriches each hit with cve.now (CVSS, CISA KEV, exploit signals, fixed versions), and prints a verdict plus an upgrade plan. Exit code: `0` safe, `1` vulnerable, `2` nothing checked or error.
+It finds the lockfiles, matches exact installed versions on OSV.dev, enriches each hit with cve.now (CVSS, CISA KEV, exploit signals, fixed versions), and prints a verdict plus an upgrade plan. Exit code: `0` pass, `1` vulnerable (tune with `--fail-on=any|cooked|kev|none`), `2` nothing checked or error.
 
 Do not re-implement the matching by hand. Read [SOURCES.md](SOURCES.md) only if the scanner fails and you need to query the APIs directly.
 

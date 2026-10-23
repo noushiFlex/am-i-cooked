@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 // am-i-cooked scanner: lockfiles -> OSV match -> cve.now enrichment -> verdict.
-// Usage: node scan.mjs [dir] [--json]. Exit code 0 = safe, 1 = vulnerable, 2 = nothing checked or error.
+// Usage: node scan.mjs [dir] [--json | --sarif] [--fail-on=any|cooked|kev|none]
+// Exit code 0 = pass, 1 = failed the --fail-on threshold (default: any finding), 2 = nothing checked or error.
 import { readdirSync, readFileSync } from 'node:fs';
 import { join, relative } from 'node:path';
 
@@ -12,7 +13,13 @@ const OSV_LABEL_TO_CVSS = { CRITICAL: 9.5, HIGH: 7.5, MODERATE: 5, MEDIUM: 5, LO
 
 const args = process.argv.slice(2);
 const asJson = args.includes('--json');
+const asSarif = args.includes('--sarif');
+const failOn = args.find((a) => a.startsWith('--fail-on='))?.split('=')[1] ?? 'any';
 const root = args.find((a) => !a.startsWith('--')) ?? '.';
+if (!['any', 'cooked', 'kev', 'none'].includes(failOn)) {
+  console.error('am-i-cooked: --fail-on must be any, cooked, kev or none');
+  process.exit(2);
+}
 
 // ---- lockfile parsers: text -> [{ name, version }] ----
 
@@ -300,8 +307,39 @@ async function main() {
   };
 
   if (asJson) console.log(JSON.stringify(report, null, 2));
+  else if (asSarif) console.log(JSON.stringify(toSarif(report), null, 2));
   else printReport(report);
-  process.exit(report.verdict === 'unknown' ? 2 : findings.length ? 1 : 0);
+  process.exit(exitCode(report));
+}
+
+function exitCode(r) {
+  if (r.verdict === 'unknown') return 2;
+  const failed = {
+    any: r.findings.length > 0,
+    cooked: r.verdict === 'cooked',
+    kev: r.findings.some((f) => f.kev),
+    none: false,
+  }[failOn];
+  return failed ? 1 : 0;
+}
+
+// SARIF 2.1.0, for GitHub code scanning (github/codeql-action/upload-sarif).
+function toSarif(r) {
+  const level = (f) => (f.kev || (f.cvss ?? 0) >= 9 ? 'error' : (f.cvss ?? 0) >= 7 ? 'warning' : 'note');
+  return {
+    $schema: 'https://json.schemastore.org/sarif-2.1.0.json',
+    version: '2.1.0',
+    runs: [{
+      tool: { driver: { name: 'am-i-cooked', informationUri: 'https://github.com/noushiFlex/am-i-cooked',
+        rules: [...new Map(r.findings.map((f) => [f.id, { id: f.id, shortDescription: { text: String(f.title).slice(0, 200) }, helpUri: `https://cve.now/${f.id}` }])).values()] } },
+      results: r.findings.map((f) => ({
+        ruleId: f.id,
+        level: level(f),
+        message: { text: `${f.package}@${f.installed} is vulnerable (CVSS ${f.cvss ?? '?'}${f.kev ? ', actively exploited' : ''}). ${f.fixedIn ? `Fixed in ${f.fixedIn}.` : 'No fix known.'}` },
+        locations: [{ physicalLocation: { artifactLocation: { uri: f.lockfile }, region: { startLine: 1 } } }],
+      })),
+    }],
+  };
 }
 
 function printReport(r) {

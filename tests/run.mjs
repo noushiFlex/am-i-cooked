@@ -22,6 +22,12 @@ assert.ok(report.upgrades.find((u) => u.package === 'urllib3').majorJump, 'urlli
 
 assert.ok(report.packagesScanned >= 16, 'bun.lock workspace entries are skipped, real packages counted');
 
+assert.equal(run(fixtures, '--fail-on=none').status, 0, '--fail-on=none never fails on findings');
+assert.equal(run(fixtures, '--fail-on=bogus').status, 2, 'invalid --fail-on is rejected');
+const sarif = JSON.parse(run(fixtures, '--sarif').stdout);
+assert.equal(sarif.version, '2.1.0');
+assert.ok(sarif.runs[0].results.length > 0 && sarif.runs[0].results[0].locations[0].physicalLocation.artifactLocation.uri, 'SARIF results carry a lockfile location');
+
 const empty = run(mkdtempSync(join(tmpdir(), 'aic-')));
 assert.equal(empty.status, 2, 'no lockfile must exit 2, never report safe');
 assert.match(empty.stdout, /UNKNOWN/);

@@ -70,9 +70,17 @@ Then, in your project: `am i cooked?`
 ```bash
 node skills/am-i-cooked/scripts/scan.mjs .          # human report
 node skills/am-i-cooked/scripts/scan.mjs . --json   # structured, see report-schema.json
+node skills/am-i-cooked/scripts/scan.mjs . --sarif  # GitHub code scanning
 ```
 
-Exit code: `0` safe, `1` vulnerable, `2` nothing checked or error.
+Exit code: `0` pass, `1` failed the threshold, `2` nothing checked or error. Pick the threshold with `--fail-on=`:
+
+| Value | Fails when |
+| --- | --- |
+| `any` (default) | any known vulnerability matches |
+| `cooked` | verdict is **cooked** (KEV, CVSS >= 9, or CVSS >= 7 with exploit signals) |
+| `kev` | at least one is actively exploited (CISA KEV) |
+| `none` | never, report only |
 
 In GitHub Actions:
 
@@ -80,7 +88,16 @@ In GitHub Actions:
 - uses: actions/checkout@v4
 - run: |
     git clone --depth 1 https://github.com/noushiFlex/am-i-cooked /tmp/aic
-    node /tmp/aic/skills/am-i-cooked/scripts/scan.mjs .
+    node /tmp/aic/skills/am-i-cooked/scripts/scan.mjs . --fail-on=cooked
+```
+
+With code scanning alerts:
+
+```yaml
+- run: node /tmp/aic/skills/am-i-cooked/scripts/scan.mjs . --sarif --fail-on=none > am-i-cooked.sarif
+- uses: github/codeql-action/upload-sarif@v3
+  with:
+    sarif_file: am-i-cooked.sarif
 ```
 
 ## Supported lockfiles
@@ -119,8 +136,8 @@ A **safe** verdict is not proof of safety. Vulnerabilities without version data 
 ## Roadmap
 
 - [x] `Cargo.lock`, `go.sum`, `Gemfile.lock`, `composer.lock`, `bun.lock`
-- [ ] `--fail-on kev|critical|any` for CI
-- [ ] SARIF output for GitHub code scanning
+- [x] `--fail-on` for CI
+- [x] SARIF output for GitHub code scanning
 
 PRs welcome, see [CONTRIBUTING.md](CONTRIBUTING.md).
 
