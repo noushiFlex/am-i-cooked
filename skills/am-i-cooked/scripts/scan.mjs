@@ -310,20 +310,37 @@ function verdictFor(findings, lockfileCount, packageCount) {
   return cooked ? 'cooked' : 'a bit cooked';
 }
 
-// One target version per package: the highest fix needed to clear every finding.
+// 0-100. The worst finding sets the base: CVSS/10 x exploit multiplier (KEV 1, exploit seen 0.9, theoretical 0.75;
+// missing CVSS counts as 5). Each extra finding adds 2, capped at +15. "Theoretical" means no known exploitation,
+// not "unreachable": this is not a reachability analysis.
+function riskScore(findings) {
+  if (!findings.length) return 0;
+  const weight = (f) => ((f.cvss ?? 5) / 10) * (f.kev ? 1 : f.likelyExploited ? 0.9 : 0.75);
+  const worst = Math.max(...findings.map(weight));
+  return Math.min(100, Math.round(worst * 100 + Math.min(15, (findings.length - 1) * 2)));
+}
+
+// One target per package: the highest fix needed to clear every finding. When that is a major jump,
+// also report the highest fix inside the current major (safeTarget) and what it leaves open.
 function upgradePlan(findings) {
+  const majorOf = (v) => stripV(v).split('.')[0];
   const plan = new Map();
   for (const f of findings) {
     const key = `${f.ecosystem}:${f.package}@${f.installed}`;
-    const row = plan.get(key) ?? { ecosystem: f.ecosystem, package: f.package, installed: f.installed, target: null, fixes: 0, unfixed: 0, worstCvss: 0 };
+    const row = plan.get(key) ?? { ecosystem: f.ecosystem, package: f.package, installed: f.installed, target: null, safeTarget: null, fixes: 0, unfixed: 0, residualAfterSafe: 0, worstCvss: 0 };
+    const higher = (a, b) => (!a || compareVersions(b, a) > 0 ? b : a);
     if (f.fixedIn) {
       row.fixes++;
-      if (!row.target || compareVersions(f.fixedIn, row.target) > 0) row.target = f.fixedIn;
-    } else row.unfixed++;
+      row.target = higher(row.target, f.fixedIn);
+      if (majorOf(f.fixedIn) === majorOf(f.installed)) row.safeTarget = higher(row.safeTarget, f.fixedIn);
+      else row.residualAfterSafe++;
+    } else {
+      row.unfixed++;
+      row.residualAfterSafe++;
+    }
     row.worstCvss = Math.max(row.worstCvss, f.cvss ?? 0);
     plan.set(key, row);
   }
-  const majorOf = (v) => stripV(v).split('.')[0];
   for (const row of plan.values()) row.majorJump = Boolean(row.target) && majorOf(row.target) !== majorOf(row.installed);
   return [...plan.values()].sort((a, b) => b.worstCvss - a.worstCvss);
 }
@@ -369,6 +386,8 @@ async function main() {
         id: d.id, title: d.title, ecosystem: pkg.ecosystem, package: pkg.name, installed: pkg.version,
         fixedIn: smallestFix(d, pkg), cvss: d.cvss, kev: d.kev, likelyExploited: d.likelyExploited,
         lockfile: pkg.lockfile, source: d.source,
+        knownExploited: d.kev || d.likelyExploited,
+        advisory: `https://cve.now/${d.id}`, osvId, osv: `https://osv.dev/vulnerability/${osvId}`,
       });
     }
   }
@@ -385,6 +404,12 @@ async function main() {
     lockfiles: lockfiles.map((f) => relative(root, f)),
     packagesScanned: packages.size,
     ignored,
+    summary: {
+      riskScore: riskScore(findings),
+      total: findings.length,
+      knownExploited: findings.filter((f) => f.knownExploited).length,
+      theoretical: findings.filter((f) => !f.knownExploited).length,
+    },
     upgrades: upgradePlan(findings),
     findings,
   };
@@ -411,14 +436,15 @@ function exitCode(r) {
 function toMarkdown(r) {
   const icon = { cooked: '🔥', 'a bit cooked': '⚠️', safe: '✅', unknown: '❔' }[r.verdict];
   const lines = [`## ${icon} am-i-cooked: ${r.verdict}`, '', `${r.packagesScanned} packages, ${r.lockfiles.length} lockfile(s)${r.ignored ? `, ${r.ignored} ignored` : ''}.`];
+  if (r.findings.length) lines.push('', `**Risk score ${r.summary.riskScore}/100**: ${r.summary.knownExploited} known exploited, ${r.summary.theoretical} theoretical.`);
   if (r.upgrades.length) {
     lines.push('', '| Package | Installed | Upgrade to | Worst CVSS | Note |', '| --- | --- | --- | --- | --- |');
     for (const u of r.upgrades) {
-      const note = [u.majorJump && 'major jump', u.unfixed && `${u.unfixed} without fix`].filter(Boolean).join(', ');
+      const note = [u.majorJump && 'major jump', u.majorJump && u.safeTarget && `safer: ${u.safeTarget}`, u.unfixed && `${u.unfixed} without fix`].filter(Boolean).join(', ');
       lines.push(`| \`${u.package}\` | ${u.installed} | ${u.target ?? 'no fix known'} | ${u.worstCvss || '?'} | ${note} |`);
     }
-    const urgent = r.findings.filter((f) => f.kev || f.likelyExploited);
-    if (urgent.length) lines.push('', `**Actively exploited or exploit seen:** ${urgent.map((f) => `[${f.id}](https://cve.now/${f.id})`).join(', ')}`);
+    const urgent = r.findings.filter((f) => f.knownExploited);
+    if (urgent.length) lines.push('', `**Known exploited:** ${urgent.map((f) => `[${f.id}](${f.advisory})`).join(', ')}`);
   }
   if (r.verdict === 'safe') lines.push('', 'No known vulnerability matches. This is not proof of safety.');
   if (r.verdict === 'unknown') lines.push('', 'Nothing was checked: no supported lockfile, or no exact pinned versions (ranges like `>=1.0` cannot be matched).');
@@ -439,6 +465,7 @@ function toSarif(r) {
         level: level(f),
         message: { text: `${f.package}@${f.installed} is vulnerable (CVSS ${f.cvss ?? '?'}${f.kev ? ', actively exploited' : ''}). ${f.fixedIn ? `Fixed in ${f.fixedIn}.` : 'No fix known.'}` },
         locations: [{ physicalLocation: { artifactLocation: { uri: f.lockfile }, region: { startLine: 1 } } }],
+        properties: { knownExploited: f.knownExploited, cvss: f.cvss },
       })),
     }],
   };
@@ -446,12 +473,14 @@ function toSarif(r) {
 
 function printReport(r) {
   console.log(`Verdict: ${r.verdict.toUpperCase()}  (${r.packagesScanned} packages, ${r.lockfiles.length} lockfile(s))`);
+  if (r.findings.length) console.log(`Risk score: ${r.summary.riskScore}/100  (${r.summary.knownExploited} known exploited, ${r.summary.theoretical} theoretical)`);
   if (!r.lockfiles.length) console.log('No supported lockfile found. Nothing was checked.');
   else if (!r.packagesScanned) console.log('Dependency files found, but none pins an exact version (ranges like ">=1.0" cannot be matched). Nothing was checked.\nPin versions first (uv lock, pip freeze > requirements.txt, poetry lock) and re-run.');
   if (r.upgrades.length) {
     console.log('\nUpgrade plan (one version clears every finding for that package):');
     for (const u of r.upgrades) {
-      const notes = [u.majorJump && 'MAJOR jump, check changelog', u.unfixed && `${u.unfixed} finding(s) have no known fix`].filter(Boolean);
+      const safer = u.majorJump && u.safeTarget ? `safer: ${u.safeTarget} clears ${u.fixes + u.unfixed - u.residualAfterSafe}, ${u.residualAfterSafe} still need the major` : null;
+      const notes = [u.majorJump && 'MAJOR jump, check changelog', safer, u.unfixed && `${u.unfixed} finding(s) have no known fix`].filter(Boolean);
       console.log(`  ${u.package}  ${u.installed} -> ${u.target ?? 'no fix known'}${notes.length ? `  (${notes.join('; ')})` : ''}`);
     }
   }
@@ -461,6 +490,7 @@ function printReport(r) {
     console.log(`\n${f.id}  CVSS ${f.cvss ?? '?'}${flags ? `  [${flags}]` : ''}`);
     console.log(`  ${f.package}@${f.installed} -> ${f.fixedIn ?? 'no fix known'}  (${f.lockfile})`);
     console.log(`  ${String(f.title).slice(0, 110)}`);
+    console.log(`  ${f.advisory}`);
   }
   if (r.findings.length > shown.length) console.log(`\n... ${r.findings.length - shown.length} more finding(s). Use --json for the full list.`);
   if (r.verdict === 'safe') console.log('\nNo known vulnerability matches. This is not proof of safety.');

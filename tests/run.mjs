@@ -32,6 +32,12 @@ const goUpgrade = report.upgrades.find((u) => u.package === 'golang.org/x/crypto
 assert.ok(goUpgrade.target, 'Go "v"-prefixed versions still resolve to a fix');
 assert.ok(goUpgrade.majorJump === false || goUpgrade.target.startsWith('0.'), 'Go v0 pseudo-version is not a false major jump');
 
+assert.ok(report.summary.riskScore > 0 && report.summary.riskScore <= 100, 'risk score in 1..100');
+assert.equal(report.summary.knownExploited + report.summary.theoretical, report.summary.total);
+assert.ok(report.findings.every((f) => f.advisory.startsWith('https://cve.now/') && f.osv.startsWith('https://osv.dev/')), 'every finding links to its advisory');
+const urllib = report.upgrades.find((u) => u.package === 'urllib3');
+assert.ok(urllib.majorJump && urllib.residualAfterSafe >= 0 && 'safeTarget' in urllib, 'major jumps expose a safer in-major alternative');
+
 const target = report.findings[0].id;
 const ignoredRun = JSON.parse(run(fixtures, '--json', `--ignore=${target.toLowerCase()}`).stdout);
 assert.equal(ignoredRun.ignored, 1, '--ignore removes the finding (case-insensitive)');

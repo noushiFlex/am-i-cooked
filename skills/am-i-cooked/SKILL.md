@@ -29,7 +29,8 @@ Do not re-implement the matching by hand. Read [SOURCES.md](SOURCES.md) only if 
 Show the user:
 
 - the verdict: **cooked**, **a bit cooked**, **safe** or **unknown** (no lockfile found, nothing was checked);
-- the upgrade plan, worst CVSS first;
+- the risk score and the known exploited vs theoretical split (theoretical means no known exploitation, not unreachable);
+- the upgrade plan, worst CVSS first. For a `MAJOR jump` row, also give the `safer` in-major version and what it leaves open;
 - for each cooked item, one plain-language sentence on the real risk (what an attacker could do), not the advisory text.
 
 Verdict rules: **cooked** = any CISA KEV hit, CVSS >= 9, or CVSS >= 7 with exploit signals. **a bit cooked** = any other hit. **safe** = no hit, and say it is not proof of safety.

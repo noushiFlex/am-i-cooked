@@ -52,6 +52,12 @@ More in [examples/sample-output.txt](examples/sample-output.txt).
 | **cooked** | Listed in CISA KEV, or CVSS >= 9, or CVSS >= 7 with exploit signals. |
 | **unknown** | No supported lockfile found. Nothing was checked. |
 
+## Risk score
+
+Every scan with findings gets a **risk score from 0 to 100** and a split between **known exploited** (CISA KEV, EPSS threshold reached, or a public exploit exists) and **theoretical** (no known exploitation). The worst finding sets the base (CVSS x exploit multiplier), and each extra finding adds 2 points, capped at +15. "Theoretical" does not mean unreachable: this is not a reachability analysis.
+
+When a package needs a major version jump, the upgrade plan also shows the **safer** in-major version and how many findings it leaves open, so you can choose between a quick patch bump and a risky major.
+
 ## Install
 
 ```bash
